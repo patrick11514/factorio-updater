@@ -19,7 +19,7 @@ pub async fn get_updates(args: &Args) -> anyhow::Result<Updates> {
         .with_style(progress_style.clone())
         .with_prefix(format!(
             "{} Fetching available updates...",
-            style("[1/2]").bold().blue(),
+            style("[1/3]").bold().blue(),
         ));
     bar.enable_steady_tick(Duration::from_millis(100));
 

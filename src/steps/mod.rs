@@ -14,7 +14,7 @@ pub async fn handle_update(args: Args) -> anyhow::Result<()> {
     let mut args = args;
 
     let updates = get_updates(&args).await?;
-    let updates = resolve_updates(&mut args, &updates)?;
+    let updates = resolve_updates(&mut args, &updates).await?;
     do_update(&args, updates).await?;
 
     Ok(())

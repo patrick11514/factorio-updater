@@ -1,18 +1,17 @@
-use std::fs;
-
 use anyhow::Context;
 use semver::Version;
+use tokio::fs;
 
 use crate::{
     functions::load_config,
-    structs::{Arch, Args, Item, Updates},
+    structs::{Arch, Args, Item, Updates, VersionDiff},
 };
 
 pub fn get_arch_folder(arch: &Arch) -> &'static str {
     match arch {
         Arch::CoreLinux64 => "linux64",
         Arch::CoreMac => "mac",
-        Arch::CoreWin64 => "windows64",
+        Arch::CoreWin64 => "win64",
         Arch::CoreExpansionLinux64 => "spaceage-linux64",
         Arch::CoreExpansionMac => "spaceage-mac",
         Arch::CoreExpansionWin64 => "spaceage-win64",
@@ -23,11 +22,11 @@ pub fn get_arch_folder(arch: &Arch) -> &'static str {
 
 pub enum UpdateType<'a> {
     FullGame(String),
-    Patch(Vec<&'a Item>),
+    Patch(Vec<&'a VersionDiff>),
     None,
 }
 
-pub fn resolve_updates<'a>(
+pub async fn resolve_updates<'a>(
     args: &mut Args,
     updates: &'a Updates,
 ) -> anyhow::Result<UpdateType<'a>> {
@@ -40,11 +39,16 @@ pub fn resolve_updates<'a>(
 
     let base_folder = std::path::Path::new(folder);
 
-    if !fs::exists(base_folder).context("Failed to check if folder exists")? {
-        fs::create_dir(base_folder).context("Failed to create folder")?;
+    if !fs::try_exists(base_folder)
+        .await
+        .context("Failed to check if folder exists")?
+    {
+        fs::create_dir(base_folder)
+            .await
+            .context("Failed to create folder")?;
     }
 
-    let config = load_config(base_folder)?;
+    let config = load_config(base_folder).await?;
     if let Some(config) = &config {
         args.version = config.version.clone();
         args.platform = config.platform.clone();
@@ -97,7 +101,7 @@ pub fn resolve_updates<'a>(
             Some(item) => match item {
                 Item::VersionDiff(version_diff) => {
                     //accumulate path for patching
-                    collected_updates.push(item);
+                    collected_updates.push(version_diff);
                     to_walk.push(&version_diff.to);
                 }
                 //we reached stable version, so stop here

@@ -1,7 +1,8 @@
-use std::{fs, path::Path};
+use std::path::Path;
 
 use anyhow::Context;
 use serde_json::json;
+use tokio::fs;
 
 use crate::structs::{Args, Config};
 
@@ -15,11 +16,13 @@ pub fn get_base_query_params(args: &Args) -> serde_json::Value {
     })
 }
 
-pub fn load_config(base_folder: &Path) -> anyhow::Result<Option<Config>> {
-    if fs::exists(base_folder.join("config.json"))
+pub async fn load_config(base_folder: &Path) -> anyhow::Result<Option<Config>> {
+    if fs::try_exists(base_folder.join("config.json"))
+        .await
         .context("Failed to check if config file exists")?
     {
         let config_data = fs::read_to_string(base_folder.join("config.json"))
+            .await
             .context("Failed to read config file")?;
         let config: Config =
             serde_json::from_str(&config_data).context("Failed to parse config file")?;
