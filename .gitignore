@@ -1,0 +1,7 @@
+/target
+# Ignore the command output dirs
+/spaceage-*
+/linux64
+/mac
+/windows64
+/linux-server
