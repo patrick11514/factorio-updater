@@ -13,10 +13,11 @@ use serde_json::json;
 use tempdir::TempDir;
 use tokio::{fs, io::AsyncWriteExt};
 use uuid::Uuid;
+use zip::read::root_dir_common_filter;
 
 use crate::{
     functions::get_base_query_params,
-    steps::items::UpdateType,
+    steps::{TICK_STRINGS, items::UpdateType},
     structs::{Arch, Args, Item, Version, VersionDiff},
 };
 
@@ -88,6 +89,46 @@ async fn download_zip<'a, 'b>(
         UpdateInfo::Patch { url, .. } => url,
     };
 
+    let progress_style = ProgressStyle::with_template(
+        "{spinner} {prefix} {wide_bar:.green} {bytes}/{total_bytes} ({percent}%) - ETA: {eta_precise} ",
+    )
+    .unwrap()
+    .tick_strings(TICK_STRINGS)
+    .progress_chars("=O ");
+
+    let (download_string, file_name) = match update {
+        UpdateInfo::FullGame {
+            version, number, ..
+        } => (
+            format!("Downloading Factorio {} v{}...", version, number),
+            format!("factorio_{}_v{}.zip", version, number),
+        ),
+        UpdateInfo::Patch {
+            version, from, to, ..
+        } => (
+            format!(
+                "Downloading Factorio {} patch v{} to v{}...",
+                version, from, to
+            ),
+            format!("factorio_{}_patch_v{}_to_v{}.zip", version, from, to),
+        ),
+    };
+
+    let mut pb = ProgressBar::new(100)
+        .with_style(progress_style.clone())
+        .with_prefix(format!(
+            "{} {}",
+            match mp {
+                Some(_) => style("[2/~]").bold().blue(),
+                None => style("[2/3]").bold().blue(),
+            },
+            download_string
+        ));
+
+    if let Some(mp) = mp {
+        pb = mp.add(pb);
+    }
+
     let client = reqwest::Client::new();
     let resp = client
         .get(url)
@@ -109,43 +150,7 @@ async fn download_zip<'a, 'b>(
         })
         .unwrap_or(0usize);
 
-    let progress_style = ProgressStyle::with_template("{spinner} {prefix} {bar} {wide_msg}")
-        .unwrap()
-        .tick_strings(&["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"])
-        .progress_chars("=O ");
-
-    let (download_string, file_name) = match update {
-        UpdateInfo::FullGame {
-            version, number, ..
-        } => (
-            format!("Downloading Factorio {} v{}...", version, number),
-            format!("factorio_{}_v{}.zip", version, number),
-        ),
-        UpdateInfo::Patch {
-            version, from, to, ..
-        } => (
-            format!(
-                "Downloading Factorio {} patch v{} to v{}...",
-                version, from, to
-            ),
-            format!("factorio_{}_patch_v{}_to_v{}.zip", version, from, to),
-        ),
-    };
-
-    let mut pb = ProgressBar::new(total_length as u64)
-        .with_style(progress_style.clone())
-        .with_prefix(format!(
-            "{} {}",
-            match mp {
-                Some(_) => style("[2/~]").bold().blue(),
-                None => style("[2/3]").bold().blue(),
-            },
-            download_string
-        ));
-
-    if let Some(mp) = mp {
-        pb = mp.add(pb);
-    }
+    pb.set_length(total_length as u64);
 
     let mut stream = resp.bytes_stream();
     let file_path = if let Some(fp) = file_path {
@@ -153,38 +158,17 @@ async fn download_zip<'a, 'b>(
     } else {
         &TempDir::new(&Uuid::new_v4().to_string()).context("Unable to create temp dir")?
     };
+
     let file_path = file_path.path().join(file_name);
 
     let mut file = fs::File::create_new(&file_path)
         .await
         .context("Unable to create zip file")?;
 
-    let start = Instant::now();
-    let mut acc = 0;
-    let mut eta = Duration::ZERO;
-
     while let Some(chunk) = stream.next().await {
         let chunk = chunk.context("Unable to download data")?;
 
         pb.inc(chunk.len() as u64);
-
-        acc += chunk.len();
-        pb.set_message(format!(
-            "{}/{} ({}%) - ETA: {}s",
-            humansize::format_size(acc, humansize::DECIMAL),
-            humansize::format_size(total_length, humansize::DECIMAL),
-            (acc as f64 / total_length as f64 * 100.0) as usize,
-            eta.as_secs()
-        ));
-
-        //recalculate eta
-        let elapsed = start.elapsed();
-        if acc > 0 && elapsed.as_secs() > 0 {
-            let speed = acc as f64 / elapsed.as_secs_f64();
-            let remaining = total_length as f64 - acc as f64;
-            eta = Duration::from_secs_f64(remaining / speed);
-        }
-
         file.write(&chunk).await.context("Error writing zip file")?;
     }
 
@@ -207,6 +191,62 @@ pub async fn do_update<'a>(args: &'a Args, update_type: UpdateType<'a>) -> anyho
             println!("{}", style("No updates available.").green().bold());
         }
     }
+    Ok(())
+}
+
+fn extract_archive(
+    path: &PathBuf,
+    target: &Path,
+    mp: Option<&MultiProgress>,
+) -> anyhow::Result<()> {
+    let file = std::fs::File::open(path).context("Unable to open zip file")?;
+    let mut archive = zip::ZipArchive::new(file).context("Unable to read zip archive")?;
+
+    let progress_style = ProgressStyle::with_template(
+        "{spinner} {prefix} {wide_bar:.green} ({percent}%) - ETA: {eta_precise} ",
+    )
+    .unwrap()
+    .tick_strings(TICK_STRINGS)
+    .progress_chars("=O ");
+
+    let mut pb = ProgressBar::new(archive.len() as u64)
+        .with_style(progress_style.clone())
+        .with_prefix(format!(
+            "{} Extracting files...",
+            match mp {
+                Some(_) => style("[2/~]").bold().blue(),
+                None => style("[2/3]").bold().blue(),
+            },
+        ));
+
+    if let Some(mp) = mp {
+        pb = mp.add(pb);
+    }
+
+    for i in 0..archive.len() {
+        let mut file = archive
+            .by_index(i)
+            .context("Unable to access file in zip")?;
+
+        let out_path = target.join(file.enclosed_name().context("Malformed file path")?);
+
+        //create folder structure
+        if let Some(parent) = out_path.parent() {
+            std::fs::create_dir_all(parent).context("Unable to create folder structure")?;
+        }
+
+        println!("Writing to {}", out_path.display());
+
+        let mut out_file =
+            std::fs::File::create(out_path).context("Unable to create extracted file")?;
+        std::io::copy(&mut file, &mut out_file).context("Unable to extract file")?;
+        drop(out_file); //write and close file handle
+
+        pb.inc(1);
+    }
+
+    pb.finish_with_message("Extraction completed.");
+
     Ok(())
 }
 
@@ -285,7 +325,9 @@ async fn process_diff(args: &Args, items: Vec<&VersionDiff>) -> anyhow::Result<(
 
     mp.clear().unwrap();
 
-    println!("{:?}", files);
-
+    join_all(files.into_iter().map(|f| {
+        tokio::task::spawn_blocking(move || extract_archive(&f, f.parent().unwrap(), None))
+    }))
+    .await;
     Ok(())
 }
