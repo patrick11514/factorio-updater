@@ -120,7 +120,7 @@ pub struct Args {
     #[arg(long)]
     pub username: String,
     /// Your factorio.com token (for authentication)
-    #[arg(long)]
+    #[arg(long, env)]
     pub token: String,
     #[arg(long)]
     pub custom_folder: Option<String>,
