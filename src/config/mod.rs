@@ -14,6 +14,8 @@ pub enum ConfigError {
     NoConfigDir,
     Read(PathBuf),
     Parse(serde_json::Error),
+    CreateDirectory,
+    Write(PathBuf),
 }
 
 static FOLDER_NAME: &'static str = "factorio-updater";
@@ -49,5 +51,32 @@ impl Config {
         };
 
         Ok(Some(config))
+    }
+
+    //TODO MAKE I ASYNC
+    pub fn save(&self) -> Result<(), ConfigError> {
+        let config_dir = match dirs::config_dir() {
+            Some(dir) => dir,
+            None => return Err(ConfigError::NoConfigDir),
+        };
+
+        let config_dir = config_dir.join(Path::new(FOLDER_NAME));
+
+        if let Err(_) = std::fs::create_dir_all(&config_dir) {
+            return Err(ConfigError::CreateDirectory);
+        }
+
+        let config_path = config_dir.join("config.json");
+
+        let data = match serde_json::to_string_pretty(self) {
+            Ok(data) => data,
+            Err(err) => return Err(ConfigError::Parse(err)),
+        };
+
+        if let Err(_) = std::fs::write(&config_path, data) {
+            return Err(ConfigError::Write(config_path));
+        }
+
+        Ok(())
     }
 }

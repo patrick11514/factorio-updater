@@ -1,18 +1,18 @@
 use crate::{
-    app::screens::{Screen, login::Login, main::Main},
+    app::screens::{Renderable, login::Login, main::Main},
     config::Config,
 };
 use crossterm::event::{EventStream, KeyCode, KeyEvent};
 use futures_util::StreamExt;
 use ratatui::{DefaultTerminal, Frame};
 
+mod components;
 mod screens;
 
-#[derive(Default)]
 pub struct App {
     exited: bool,
     events: EventStream,
-    screen: Screen,
+    screen: Box<dyn Renderable>,
 }
 
 impl App {
@@ -22,8 +22,8 @@ impl App {
             exited: false,
             events: EventStream::default(),
             screen: match config {
-                Some(config) => Screen::Main(Main::new(config)),
-                None => Screen::Login(Login {}),
+                Some(config) => Box::new(Main::new(config)),
+                None => Box::new(Login::default()),
             },
         }
     }
@@ -43,19 +43,21 @@ impl App {
 
     async fn handle_events(&mut self) {
         let event = self.events.next().await.unwrap();
-        match event {
+        match &event {
             Ok(event) => match event {
                 crossterm::event::Event::Key(key_event) => self.handle_key(key_event),
                 _ => {}
             },
             _ => {}
-        }
+        };
     }
 
-    fn handle_key(&mut self, ev: KeyEvent) {
-        match ev.code {
+    fn handle_key(&mut self, ev: &KeyEvent) {
+        match &ev.code {
             KeyCode::Char('q') | KeyCode::Esc => self.handle_exit(),
-            _ => {}
+            _ => {
+                self.screen.on_key(ev.clone());
+            }
         }
     }
 

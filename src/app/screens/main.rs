@@ -1,3 +1,4 @@
+use crossterm::event::KeyEvent;
 use ratatui::{
     style::Stylize,
     text::Line,
@@ -26,5 +27,8 @@ impl Renderable for Main {
                 .centered(),
             frame.area(),
         )
+    }
+
+    fn on_key(&mut self, _: KeyEvent) { /*EMPTY */
     }
 }

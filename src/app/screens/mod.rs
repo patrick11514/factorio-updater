@@ -1,30 +1,59 @@
 pub(crate) mod login;
 pub(crate) mod main;
 
-use ratatui::Frame;
+use crossterm::event::KeyEvent;
+use ratatui::{
+    Frame,
+    layout::{Constraint, Rect},
+};
 
-use crate::app::screens::{login::Login, main::Main};
-
-pub enum Screen {
-    Login(Login),
-    Main(Main),
-}
-
-trait Renderable {
+pub trait Renderable {
     fn render(&mut self, frame: &mut Frame);
+    fn on_key(&mut self, key: KeyEvent);
 }
 
-impl Screen {
-    pub fn render(&mut self, frame: &mut Frame) {
-        match self {
-            Screen::Login(login) => login.render(frame),
-            Screen::Main(main) => main.render(frame),
-        }
+pub enum ConstaintDirection {
+    Horizontal,
+    Vertical,
+}
+
+trait ConstrainExtend {
+    fn min(self, layout: &Rect, min: u16, direction: ConstaintDirection) -> Self;
+    fn max(self, layout: &Rect, max: u16, direction: ConstaintDirection) -> Self;
+}
+
+impl ConstrainExtend for Constraint {
+    fn min(self, layout: &Rect, min: u16, direction: ConstaintDirection) -> Self {
+        let perc = match self {
+            Constraint::Percentage(perc) => perc,
+            c => return c,
+        };
+        let min = std::cmp::min(
+            match direction {
+                ConstaintDirection::Vertical => layout.height,
+                ConstaintDirection::Horizontal => layout.width,
+            } * perc
+                / 100,
+            min,
+        );
+
+        Constraint::Length(min)
     }
-}
 
-impl Default for Screen {
-    fn default() -> Self {
-        Screen::Login(Login {})
+    fn max(self, layout: &Rect, max: u16, direction: ConstaintDirection) -> Self {
+        let perc = match self {
+            Constraint::Percentage(perc) => perc,
+            c => return c,
+        };
+        let max = std::cmp::max(
+            match direction {
+                ConstaintDirection::Vertical => layout.height,
+                ConstaintDirection::Horizontal => layout.width,
+            } * perc
+                / 100,
+            max,
+        );
+
+        Constraint::Length(max)
     }
 }
