@@ -4,7 +4,7 @@ use ratatui::{
     layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
     text::Line,
-    widgets::{Block, BorderType, Paragraph},
+    widgets::{Block, BorderType, Paragraph, Wrap},
 };
 
 use crate::{
@@ -76,18 +76,24 @@ impl Login {
     }
 
     async fn submit(&mut self) -> Option<ScreenEvent> {
+        let mut errors = false;
+
         if self.username.value().len() == 0 {
             self.username.set_error(Some("Please enter username"));
-            return None;
+            errors = true;
         } else {
             self.username.set_error(None);
         }
 
         if self.token.value().len() == 0 {
             self.token.set_error(Some("Please enter token"));
-            return None;
+            errors = true;
         } else {
             self.token.set_error(None);
+        }
+
+        if errors {
+            return None;
         }
 
         let config = Config {
@@ -132,7 +138,7 @@ impl Screen for Login {
         let centered = center(
             frame.area(),
             Constraint::Percentage(25).max(&frame.area(), 40, ConstaintDirection::Horizontal),
-            Constraint::Percentage(23).max(&frame.area(), 11, ConstaintDirection::Vertical),
+            Constraint::Percentage(23).max(&frame.area(), 14, ConstaintDirection::Vertical),
         );
 
         let inside = card.inner(centered);
@@ -141,14 +147,21 @@ impl Screen for Login {
         let main_layout = Layout::default()
             .direction(Direction::Vertical)
             .constraints(vec![
-                Constraint::Ratio(1, 3),
-                Constraint::Ratio(1, 3),
+                Constraint::Fill(1),
+                Constraint::Ratio(1, 4),
+                Constraint::Ratio(1, 4),
                 Constraint::Fill(1),
             ])
             .split(inside);
 
-        frame.render_widget(self.username.render(), main_layout[0]);
-        frame.render_widget(self.token.render(), main_layout[1]);
+        frame.render_widget(
+            Paragraph::new("with username and token from factorio.com")
+                .wrap(Wrap { trim: false })
+                .centered(),
+            main_layout[0],
+        );
+        frame.render_widget(self.username.render(), main_layout[1]);
+        frame.render_widget(self.token.render(), main_layout[2]);
         frame.render_widget(
             Paragraph::new("Login")
                 .block(Block::bordered())
@@ -158,7 +171,7 @@ impl Screen for Login {
                     Style::new()
                 })
                 .centered(),
-            main_layout[2],
+            main_layout[3],
         );
     }
 
