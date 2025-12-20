@@ -1,15 +1,25 @@
+#![allow(dead_code)]
+
 pub(crate) mod login;
 pub(crate) mod main;
 
+use async_trait::async_trait;
 use crossterm::event::KeyEvent;
 use ratatui::{
     Frame,
     layout::{Constraint, Rect},
 };
 
-pub trait Renderable {
+use crate::{app::api::Api, config::Config};
+
+#[async_trait]
+pub trait Screen {
     fn render(&mut self, frame: &mut Frame);
-    fn on_key(&mut self, key: KeyEvent);
+    async fn on_key(&mut self, key: KeyEvent) -> Option<ScreenEvent>;
+}
+
+pub enum ScreenEvent {
+    Logged(Api),
 }
 
 pub enum ConstaintDirection {

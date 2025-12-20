@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
     layout::{Constraint, Direction, Flex, Layout, Rect},
@@ -8,8 +9,9 @@ use ratatui::{
 
 use crate::{
     app::{
+        api::Api,
         components::input::Input,
-        screens::{ConstaintDirection, ConstrainExtend, Renderable},
+        screens::{ConstaintDirection, ConstrainExtend, Screen, ScreenEvent},
     },
     config::Config,
 };
@@ -73,33 +75,53 @@ impl Login {
         self.token.set_selected(self.selected == Selected::Token);
     }
 
-    fn submit(&mut self) {
+    async fn submit(&mut self) -> Option<ScreenEvent> {
         if self.username.value().len() == 0 {
             self.username.set_error(Some("Please enter username"));
-            return;
+            return None;
         } else {
             self.username.set_error(None);
         }
 
         if self.token.value().len() == 0 {
             self.token.set_error(Some("Please enter token"));
-            return;
+            return None;
         } else {
             self.token.set_error(None);
         }
-
-        //TODO
 
         let config = Config {
             username: self.username.value().to_string(),
             token: self.token.value().to_string(),
         };
 
-        config.save().unwrap();
+        config.save().await.unwrap();
+
+        let api = Api::new(config);
+
+        match api.check_credentials().await {
+            Ok(check) => {
+                if check {
+                    Some(ScreenEvent::Logged(api))
+                } else {
+                    let err = Some("Invalid combination of username/token");
+                    self.username.set_error(err.clone());
+                    self.token.set_error(err);
+                    None
+                }
+            }
+            Err(_) => {
+                let err = Some("Unable to check username/token validity");
+                self.username.set_error(err.clone());
+                self.token.set_error(err);
+                None
+            }
+        }
     }
 }
 
-impl Renderable for Login {
+#[async_trait]
+impl Screen for Login {
     fn render(&mut self, frame: &mut ratatui::Frame) {
         let title = Line::from("Please login").bold().blue().centered();
 
@@ -140,24 +162,30 @@ impl Renderable for Login {
         );
     }
 
-    fn on_key(&mut self, key: KeyEvent) {
+    async fn on_key(&mut self, key: KeyEvent) -> Option<ScreenEvent> {
         match key.code {
             KeyCode::Tab | KeyCode::Down => {
                 self.select(self.selected.next());
+                None
             }
             KeyCode::Up => {
                 self.select(self.selected.prev());
+                None
             }
-            KeyCode::Enter => self.submit(),
-            _ => match self.selected {
-                Selected::Username => {
-                    self.username.handle_key(key);
-                }
-                Selected::Token => {
-                    self.token.handle_key(key);
-                }
-                Selected::Button => { /* EMPTY */ }
-            },
+            KeyCode::Enter => self.submit().await,
+            _ => {
+                match self.selected {
+                    Selected::Username => {
+                        self.username.handle_key(key);
+                    }
+                    Selected::Token => {
+                        self.token.handle_key(key);
+                    }
+                    Selected::Button => { /* EMPTY */ }
+                };
+
+                None
+            }
         }
     }
 }

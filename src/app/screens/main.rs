@@ -1,34 +1,48 @@
+use async_trait::async_trait;
 use crossterm::event::KeyEvent;
 use ratatui::{
     style::Stylize,
     text::Line,
-    widgets::{Block, Paragraph},
+    widgets::{Block, BorderType, Paragraph},
 };
 
-use crate::{app::screens::Renderable, config::Config};
+use crate::app::{
+    api::Api,
+    screens::{Screen, ScreenEvent},
+};
 
 pub struct Main {
-    config: Config,
+    username: String,
+    api: Api,
 }
 
 impl Main {
-    pub fn new(config: Config) -> Self {
-        Self { config }
+    pub fn new(api: Api) -> Self {
+        Self {
+            username: api.config.username.clone(),
+            api,
+        }
     }
 }
 
-impl Renderable for Main {
+#[async_trait]
+impl Screen for Main {
     fn render(&mut self, frame: &mut ratatui::Frame) {
-        let title = Line::from("Main").bold().blue().centered();
-        let text = format!("Welcome {}", self.config.username);
+        let text = format!("Welcome {}", self.username);
         frame.render_widget(
             Paragraph::new(text)
-                .block(Block::bordered().title(title))
+                .block(
+                    Block::bordered()
+                        .border_type(BorderType::Rounded)
+                        .title(Line::from(" Factorio Updater ").bold().blue().centered()),
+                )
                 .centered(),
             frame.area(),
         )
     }
 
-    fn on_key(&mut self, _: KeyEvent) { /*EMPTY */
+    async fn on_key(&mut self, _: KeyEvent) -> Option<ScreenEvent> {
+        /*EMPTY */
+        None
     }
 }

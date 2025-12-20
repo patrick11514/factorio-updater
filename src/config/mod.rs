@@ -53,8 +53,7 @@ impl Config {
         Ok(Some(config))
     }
 
-    //TODO MAKE I ASYNC
-    pub fn save(&self) -> Result<(), ConfigError> {
+    pub async fn save(&self) -> Result<(), ConfigError> {
         let config_dir = match dirs::config_dir() {
             Some(dir) => dir,
             None => return Err(ConfigError::NoConfigDir),
@@ -62,7 +61,7 @@ impl Config {
 
         let config_dir = config_dir.join(Path::new(FOLDER_NAME));
 
-        if let Err(_) = std::fs::create_dir_all(&config_dir) {
+        if let Err(_) = fs::create_dir_all(&config_dir).await {
             return Err(ConfigError::CreateDirectory);
         }
 
@@ -73,7 +72,7 @@ impl Config {
             Err(err) => return Err(ConfigError::Parse(err)),
         };
 
-        if let Err(_) = std::fs::write(&config_path, data) {
+        if let Err(_) = fs::write(&config_path, data).await {
             return Err(ConfigError::Write(config_path));
         }
 
