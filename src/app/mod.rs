@@ -10,7 +10,7 @@ use crate::{
 };
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent};
 use futures_util::StreamExt;
-use ratatui::{DefaultTerminal, Frame, layout::Rect, widgets::Widget};
+use ratatui::{DefaultTerminal, Frame, layout::Rect};
 
 mod api;
 mod components;

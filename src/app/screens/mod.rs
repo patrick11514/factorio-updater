@@ -10,7 +10,7 @@ use ratatui::{
     layout::{Constraint, Rect},
 };
 
-use crate::{app::api::Api, config::Config};
+use crate::app::api::Api;
 
 #[async_trait]
 pub trait Screen {
