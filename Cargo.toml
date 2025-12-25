@@ -9,7 +9,7 @@ anyhow = "1.0.100"
 reqwest = { version = "0.12.24", features = ["json", "stream"] }
 clap = { version = "4.5.51", features = ["derive", "env"] }
 serde_json = "1.0.145"
-zip = "6.0.0"
+zip = "7.0.0"
 indicatif = "0.18.2"
 console = "0.16.1"
 semver = "1.0.27"
@@ -20,6 +20,8 @@ uuid = { version = "1.18.1", features = ["v4"] }
 ratatui = "0.29.0"
 crossterm = { version = "0.28.0", features = ["event-stream"] }
 dirs = "6.0.0"
-tui-input = { version = "0.13.0", features = ["crossterm"] }
+tui-input = { version = "0.14.0", features = ["crossterm"] }
 async-trait = "0.1.89"
 figlet-rs = "0.1.5"
+simple-logging = "2.0.2"
+log = "0.4.29"

@@ -5,6 +5,8 @@ async fn main() -> anyhow::Result<()> {
     //let args = Args::parse();
     //handle_update(args).await?;
 
+    simple_logging::log_to_file("debug.log", log::LevelFilter::Debug)?;
+
     let mut term = ratatui::init();
 
     let app = App::new().await;

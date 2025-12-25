@@ -1,9 +1,11 @@
 use async_trait::async_trait;
 use crossterm::event::KeyEvent;
 use ratatui::{
-    style::Stylize,
+    layout::Rect,
+    style::{Style, Stylize},
+    symbols::border::Set,
     text::Line,
-    widgets::{Block, BorderType, Paragraph},
+    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
 };
 
 use crate::app::{
@@ -38,7 +40,7 @@ impl Screen for Main {
                 )
                 .centered(),
             frame.area(),
-        )
+        );
     }
 
     async fn on_key(&mut self, _: KeyEvent) -> Option<ScreenEvent> {
