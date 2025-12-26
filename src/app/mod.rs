@@ -69,16 +69,38 @@ impl App<'_> {
 
     fn draw(&mut self, frame: &mut Frame) {
         self.screen.render(frame);
+
         if let Some(popup) = &self.popup {
             let area = frame.area();
 
+            //2k = 227
+            let ratio = if area.width > 200 {
+                7
+            } else if area.width > 100 {
+                5
+            } else if area.width > 50 {
+                3
+            } else {
+                1
+            };
+
             frame.render_widget(
                 popup.clone(),
-                Rect {
-                    x: area.x / 2,
-                    y: area.y / 2,
-                    width: area.width / 2,
-                    height: area.height / 2,
+                if ratio == 1 {
+                    Rect {
+                        x: 0,
+                        y: 0,
+                        width: area.width,
+                        height: area.height,
+                    }
+                } else {
+                    Rect {
+                        //magic 🧙
+                        x: (area.width - (area.width / ratio)) / 2,
+                        y: (area.height - (area.height / ratio)) / 2,
+                        width: area.width / ratio,
+                        height: (area.height / ratio).max(5),
+                    }
                 },
             );
         }
@@ -92,14 +114,35 @@ impl App<'_> {
     }
 
     async fn handle_key(&mut self, ev: &KeyEvent) {
-        let res = match &ev.code {
-            KeyCode::Char('q') | KeyCode::Esc => return self.handle_exit(),
-            _ => self.screen.on_key(ev.clone()).await,
+        let is_exit = matches!(
+            ev.code,
+            KeyCode::Char('c')
+                if ev
+                    .modifiers
+                    .contains(crossterm::event::KeyModifiers::CONTROL)
+
+        ) || matches!(ev.code, KeyCode::Char('q') | KeyCode::Esc);
+
+        if is_exit {
+            self.handle_exit();
+            return;
+        }
+
+        let popup_result = self
+            .popup
+            .as_mut()
+            .map_or(None, |popup| popup.handle_key(ev));
+
+        let screen_result = match popup_result {
+            Some(popup_result) => self.screen.on_popup(popup_result).await,
+            None => self.screen.on_key(ev).await,
         };
 
-        if let Some(ev) = res {
-            match ev {
+        if let Some(screen_ev) = screen_result {
+            match screen_ev {
                 screens::ScreenEvent::Logged(config) => self.screen = Box::new(Main::new(config)),
+                screens::ScreenEvent::OpenPopup(popup) => self.popup = Some(popup),
+                screens::ScreenEvent::ClosePopup => self.popup = None,
             }
         }
     }

@@ -10,7 +10,7 @@ use ratatui::{
 use crate::{
     app::{
         api::Api,
-        components::input::Input,
+        components::{input::Input, popup::PopupResult},
         screens::{ConstaintDirection, ConstrainExtend, Screen, ScreenEvent},
     },
     config::Config,
@@ -175,7 +175,7 @@ impl Screen for Login {
         );
     }
 
-    async fn on_key(&mut self, key: KeyEvent) -> Option<ScreenEvent> {
+    async fn on_key(&mut self, key: &KeyEvent) -> Option<ScreenEvent> {
         match key.code {
             KeyCode::Tab | KeyCode::Down => {
                 self.select(self.selected.next());
@@ -200,5 +200,9 @@ impl Screen for Login {
                 None
             }
         }
+    }
+
+    async fn on_popup(&mut self, _: PopupResult) -> Option<ScreenEvent> {
+        None
     }
 }

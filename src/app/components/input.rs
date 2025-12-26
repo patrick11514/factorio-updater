@@ -2,7 +2,7 @@
 
 use crossterm::event::{Event, KeyEvent};
 use ratatui::{
-    style::{Color, Style, Styled},
+    style::{Color, Style},
     widgets::{Block, Paragraph},
 };
 use tui_input::{Input as NativeInput, backend::crossterm::EventHandler};
@@ -81,8 +81,8 @@ impl Input {
         .block(block)
     }
 
-    pub fn handle_key(&mut self, key: KeyEvent) {
-        self.native_input.handle_event(&Event::Key(key));
+    pub fn handle_key(&mut self, key: &KeyEvent) {
+        self.native_input.handle_event(&Event::Key(*key));
     }
 
     pub fn value(&self) -> &str {

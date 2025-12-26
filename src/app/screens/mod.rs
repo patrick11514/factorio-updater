@@ -10,16 +10,22 @@ use ratatui::{
     layout::{Constraint, Rect},
 };
 
-use crate::app::api::Api;
+use crate::app::{
+    api::Api,
+    components::popup::{Popup, PopupResult},
+};
 
 #[async_trait]
 pub trait Screen {
     fn render(&mut self, frame: &mut Frame);
-    async fn on_key(&mut self, key: KeyEvent) -> Option<ScreenEvent>;
+    async fn on_key(&mut self, key: &KeyEvent) -> Option<ScreenEvent>;
+    async fn on_popup(&mut self, result: PopupResult) -> Option<ScreenEvent>;
 }
 
 pub enum ScreenEvent {
     Logged(Api),
+    OpenPopup(Popup<'static>),
+    ClosePopup,
 }
 
 pub enum ConstaintDirection {

@@ -1,21 +1,21 @@
 use async_trait::async_trait;
 use crossterm::event::KeyEvent;
 use ratatui::{
-    layout::Rect,
-    style::{Style, Stylize},
-    symbols::border::Set,
+    style::Stylize,
     text::Line,
-    widgets::{Block, BorderType, Borders, Paragraph, Wrap},
+    widgets::{Block, BorderType, Paragraph},
 };
 
 use crate::app::{
     api::Api,
+    components::popup::PopupResult,
     screens::{Screen, ScreenEvent},
 };
 
 pub struct Main {
     username: String,
     api: Api,
+    count: usize,
 }
 
 impl Main {
@@ -23,6 +23,7 @@ impl Main {
         Self {
             username: api.config.username.clone(),
             api,
+            count: 0,
         }
     }
 }
@@ -43,8 +44,11 @@ impl Screen for Main {
         );
     }
 
-    async fn on_key(&mut self, _: KeyEvent) -> Option<ScreenEvent> {
-        /*EMPTY */
+    async fn on_key(&mut self, _: &KeyEvent) -> Option<ScreenEvent> {
+        None
+    }
+
+    async fn on_popup(&mut self, _: PopupResult) -> Option<ScreenEvent> {
         None
     }
 }
