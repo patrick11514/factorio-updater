@@ -1,2 +1,3 @@
-pub mod input;
-pub mod popup;
+pub(crate) mod input;
+pub(crate) mod log;
+pub(crate) mod popup;

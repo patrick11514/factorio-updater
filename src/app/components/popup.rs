@@ -56,7 +56,7 @@ impl Widget for Popup<'_> {
         let mut block = Block::new()
             .title_style(self.title_style)
             .borders(Borders::ALL)
-            .border_type(BorderType::Rounded)
+            .border_type(BorderType::Plain)
             .border_style(self.border_style);
 
         if let Some(title) = self.title {

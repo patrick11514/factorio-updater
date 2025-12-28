@@ -132,7 +132,7 @@ impl Screen for Login {
         let title = Line::from("Please login").bold().blue().centered();
 
         let card = Block::bordered()
-            .border_type(BorderType::Rounded)
+            .border_type(BorderType::Plain)
             .title(title);
 
         let centered = center(
