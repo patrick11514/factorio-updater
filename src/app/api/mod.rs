@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
@@ -28,6 +30,15 @@ type Response<T> = Result<T, ErrorResponse>;
 pub enum ApiError {
     Reqwest,
     Decode,
+}
+
+impl Display for ApiError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ApiError::Reqwest => write!(f, "Network request failed"),
+            ApiError::Decode => write!(f, "Failed to decode response"),
+        }
+    }
 }
 
 impl Api {
