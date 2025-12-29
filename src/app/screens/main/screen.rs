@@ -1,10 +1,15 @@
+use std::{pin::Pin, sync::Arc, thread::current};
+
 use async_trait::async_trait;
 use crossterm::event::KeyEvent;
 use ratatui::text::Line;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 use crate::app::{
-    api::Api,
+    api::{
+        Api,
+        structs::{Updates, Version},
+    },
     components::{
         log::{Log, LogBuilder, LogState},
         popup::{PopupBuilder, PopupResult},
@@ -14,21 +19,16 @@ use crate::app::{
         main::{
             components::{
                 render::render,
-                run::check_credentials,
+                run::{
+                    InstalledVersionDetails, RunState, check_credentials, check_for_updates,
+                    fetch_versions,
+                },
                 tick::{OpenedPopup, tick},
             },
             message::MainMessage,
         },
     },
 };
-
-#[derive(PartialEq, Default, Debug, Clone)]
-pub enum RunState {
-    #[default]
-    CheckingCredentials,
-    FetchingVersions,
-    Idle,
-}
 
 pub struct Main {
     pub(crate) username: String,
@@ -39,6 +39,8 @@ pub struct Main {
     pub(crate) opened_popup: Option<OpenedPopup>,
     pub(crate) selected_version: Option<usize>,
     pub(crate) run_state: RunState,
+    pub(crate) updates: Option<Arc<Updates>>,
+    pub(crate) installed_version_details: Vec<InstalledVersionDetails>,
 }
 
 impl Main {
@@ -54,22 +56,50 @@ impl Main {
             opened_popup: None,
             selected_version: None,
             run_state: Default::default(),
+            installed_version_details: Vec::new(),
+            updates: None,
         }
     }
 }
 
 #[async_trait]
 impl Screen for Main {
-    fn run(&mut self) -> Option<JoinHandle<()>> {
+    fn init(&mut self) -> Option<JoinHandle<()>> {
         let tx = self.tx.clone();
         let api = self.api.clone();
 
         let state = self.run_state.clone();
+        let updates = self.updates.clone();
 
         Some(tokio::spawn(async move {
-            //TODO match and then start specific tasks
+            let mut current_state = state;
+            loop {
+                let next_step = match current_state {
+                    RunState::CheckingCredentials => check_credentials(&api, &tx).await,
+                    RunState::FetchingVersions => fetch_versions(&api, &tx).await,
+                    RunState::CheckForUpdates => {
+                        check_for_updates(
+                            updates.clone().unwrap(),
+                            &api.config.installed_versions,
+                            &tx,
+                        )
+                        .await
+                    }
+                    RunState::Idle => return,
+                };
 
-            check_credentials(&api, &tx).await;
+                match next_step {
+                    None => {
+                        return;
+                    }
+                    Some(next_state) => {
+                        current_state = next_state;
+                        tx.send(MainMessage::ChangeRunState(current_state.clone()))
+                            .await
+                            .unwrap();
+                    }
+                }
+            }
         }))
     }
 
@@ -94,7 +124,7 @@ impl Screen for Main {
                         self.opened_popup = None;
 
                         // Retry checking credentials
-                        self.run();
+                        self.init();
 
                         Some(ScreenEvent::ClosePopup)
                     }

@@ -1,10 +1,13 @@
+use std::sync::Arc;
+
 use ratatui::text::Line;
 
 use crate::app::{
+    api::Response,
     components::popup::PopupBuilder,
     screens::{
         ScreenEvent,
-        main::{message::MainMessage, screen::Main},
+        main::{components::run::RunState, message::MainMessage, screen::Main},
     },
 };
 
@@ -50,7 +53,28 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 main.logs.push(Box::new(log));
             }
             MainMessage::LoadVersions(result, state) => match result {
-                Ok(response) => {}
+                Ok(response) => match response {
+                    Response::Success(updates) => {
+                        state.lock().unwrap().finish();
+                        main.updates = Some(Arc::new(updates));
+                        main.run_state = RunState::CheckForUpdates;
+                        return Some(ScreenEvent::RunInit);
+                    }
+                    Response::Error(error_response) => {
+                        state.lock().unwrap().error();
+                        main.opened_popup = Some(OpenedPopup::ErrorNotify);
+                        return Some(ScreenEvent::OpenPopup(
+                            PopupBuilder::error()
+                                .title(Line::from("Fetching Versions").centered())
+                                .content(format!(
+                                    "Failed to fetch available versions:\n{}",
+                                    error_response.message
+                                ))
+                                .build()
+                                .unwrap(),
+                        ));
+                    }
+                },
                 Err(err) => {
                     state.lock().unwrap().error();
                     main.opened_popup = Some(OpenedPopup::ErrorNotify);
@@ -66,6 +90,13 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                     ));
                 }
             },
+            MainMessage::ChangeRunState(run_state) => {
+                main.run_state = run_state;
+            }
+            MainMessage::VersionDetails(items, state) => {
+                main.installed_version_details = items;
+                state.lock().unwrap().finish();
+            }
         }
     }
 

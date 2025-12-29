@@ -21,22 +21,34 @@ const BASE_URL: &str = "https://factorio.com";
 
 #[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
-    message: String,
-    status: u32,
+    pub(crate) message: String,
+    pub(crate) status: u32,
 }
 
-pub type Response<T> = Result<T, ErrorResponse>;
+#[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+pub enum Response<T> {
+    Success(T),
+    Error(ErrorResponse),
+}
 
 pub enum ApiError {
-    Reqwest,
-    Decode,
+    Reqwest(reqwest::Error),
+    Decode(serde_json::Error, String),
 }
 
 impl Display for ApiError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApiError::Reqwest => write!(f, "Network request failed"),
-            ApiError::Decode => write!(f, "Failed to decode response"),
+            ApiError::Reqwest(err) => {
+                log::debug!("Reqwest error: {}", err);
+                write!(f, "Network request failed")
+            }
+            ApiError::Decode(err, text) => {
+                log::debug!("Decode error: {}", err);
+                log::debug!("Response text: {}", text);
+                write!(f, "Failed to decode response")
+            }
         }
     }
 }
@@ -55,7 +67,7 @@ impl Api {
 
         let res = match reqwest::get(url).await {
             Ok(res) => res,
-            Err(_) => return Err(ApiError::Reqwest),
+            Err(err) => return Err(ApiError::Reqwest(err)),
         };
 
         Ok(res.status() == StatusCode::OK)
@@ -70,9 +82,20 @@ impl Api {
 
         let res = match reqwest::get(url).await {
             Ok(res) => res,
-            Err(_) => return Err(ApiError::Reqwest),
+            Err(err) => return Err(ApiError::Reqwest(err)),
         };
 
-        res.json().await.map_err(|_| ApiError::Decode)
+        let text = match res.text().await {
+            Ok(text) => text,
+            Err(err) => return Err(ApiError::Reqwest(err)),
+        };
+
+        match serde_json::from_str::<Response<Updates>>(&text) {
+            Ok(data) => Ok(data),
+            Err(err) => {
+                log::debug!("Failed to decode response: {}", err);
+                Err(ApiError::Decode(err, text))
+            }
+        }
     }
 }

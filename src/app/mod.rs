@@ -50,7 +50,7 @@ impl App<'_> {
             screen_run_task: None,
         };
 
-        app.screen.run();
+        app.screen.init();
 
         app
     }
@@ -161,6 +161,9 @@ impl App<'_> {
                 self.popup = None;
                 self.switch_screen(Login::default());
             }
+            screens::ScreenEvent::RunInit => {
+                self.screen.init();
+            }
         }
     }
 
@@ -174,7 +177,7 @@ impl App<'_> {
         }
 
         self.screen = Box::new(screen);
-        let handle = self.screen.run();
+        let handle = self.screen.init();
 
         self.screen_run_task = handle;
     }

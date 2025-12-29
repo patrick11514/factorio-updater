@@ -1,25 +1,15 @@
 use ratatui::{
     Frame,
     layout::{self, Rect},
-    symbols::border,
     widgets::{Block, Wrap},
 };
 
-use crate::{
-    app::{
-        api::structs::{Platform, Version},
-        components::log::Log,
-        config::{Config, InstalledVersion},
-        screens::main::screen::Main,
-    },
-    utils::with_title,
+use crate::app::{
+    components::log::Log,
+    config::{Config, InstalledVersion},
+    screens::main::screen::Main,
 };
 
-use std::sync::atomic;
-
-use async_trait::async_trait;
-use crossterm::event::KeyEvent;
-use derive_builder::Builder;
 use ratatui::{
     layout::Layout,
     style::{Color, Style},

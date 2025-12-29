@@ -8,6 +8,7 @@ use tokio::fs;
 pub struct InstalledVersion {
     pub version: Version,
     pub platform: Platform,
+    pub current_version: String,
     pub path: PathBuf,
 }
 

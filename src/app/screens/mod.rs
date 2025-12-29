@@ -19,7 +19,7 @@ use crate::app::{
 #[async_trait]
 pub trait Screen: Send {
     /// Method called once for initialization
-    fn run(&mut self) -> Option<JoinHandle<()>> {
+    fn init(&mut self) -> Option<JoinHandle<()>> {
         None
     }
     /// Method called on every tick
@@ -43,6 +43,7 @@ pub enum ScreenEvent {
     Logout,
     OpenPopup(Popup<'static>),
     ClosePopup,
+    RunInit,
 }
 
 pub enum ConstaintDirection {
