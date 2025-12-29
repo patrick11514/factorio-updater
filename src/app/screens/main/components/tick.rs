@@ -49,6 +49,23 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
             MainMessage::CreateLog(log) => {
                 main.logs.push(Box::new(log));
             }
+            MainMessage::LoadVersions(result, state) => match result {
+                Ok(response) => {}
+                Err(err) => {
+                    state.lock().unwrap().error();
+                    main.opened_popup = Some(OpenedPopup::ErrorNotify);
+                    return Some(ScreenEvent::OpenPopup(
+                        PopupBuilder::error()
+                            .title(Line::from("Fetching Versions").centered())
+                            .content(format!(
+                                "An error occurred while fetching available versions:\n{}",
+                                err
+                            ))
+                            .build()
+                            .unwrap(),
+                    ));
+                }
+            },
         }
     }
 

@@ -1,11 +1,14 @@
 use std::sync::{Arc, Mutex};
 
 use crate::app::{
-    api::ApiError,
+    api::{ApiError, Response, structs::Updates},
     components::log::{Log, LogState},
 };
 
+type State = Arc<Mutex<LogState>>;
+
 pub enum MainMessage {
     CreateLog(Log),
-    CheckLogin(Result<Option<()>, ApiError>, Arc<Mutex<LogState>>),
+    CheckLogin(Result<Option<()>, ApiError>, State),
+    LoadVersions(Result<Response<Updates>, ApiError>, State),
 }

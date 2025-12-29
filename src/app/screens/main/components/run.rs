@@ -1,7 +1,7 @@
 use tokio::sync::mpsc::Sender;
 
 use crate::app::{
-    api::Api,
+    api::{self, Api},
     components::log::{LogBuilder, LogState},
     screens::main::message::MainMessage,
 };
@@ -36,4 +36,17 @@ pub async fn check_credentials(api: &Api, tx: &Sender<MainMessage>) {
             return;
         }
     };
+}
+
+pub async fn fetch_versions(api: &Api, tx: &Sender<MainMessage>) {
+    let log = LogBuilder::text("Fetching available versions...")
+        .state(LogState::default())
+        .build()
+        .unwrap();
+
+    let state = log.state.clone();
+    tx.send(MainMessage::CreateLog(log)).await.unwrap();
+    tx.send(MainMessage::LoadVersions(api.get_versions().await, state))
+        .await
+        .unwrap();
 }

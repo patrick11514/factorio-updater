@@ -22,10 +22,10 @@ const BASE_URL: &str = "https://factorio.com";
 #[derive(Serialize, Deserialize)]
 pub struct ErrorResponse {
     message: String,
-    statuc: u32,
+    status: u32,
 }
 
-type Response<T> = Result<T, ErrorResponse>;
+pub type Response<T> = Result<T, ErrorResponse>;
 
 pub enum ApiError {
     Reqwest,

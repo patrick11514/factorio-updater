@@ -22,6 +22,14 @@ use crate::app::{
     },
 };
 
+#[derive(PartialEq, Default, Debug, Clone)]
+pub enum RunState {
+    #[default]
+    CheckingCredentials,
+    FetchingVersions,
+    Idle,
+}
+
 pub struct Main {
     pub(crate) username: String,
     pub(crate) api: Api,
@@ -30,6 +38,7 @@ pub struct Main {
     pub(crate) tx: mpsc::Sender<MainMessage>,
     pub(crate) opened_popup: Option<OpenedPopup>,
     pub(crate) selected_version: Option<usize>,
+    pub(crate) run_state: RunState,
 }
 
 impl Main {
@@ -44,6 +53,7 @@ impl Main {
             tx,
             opened_popup: None,
             selected_version: None,
+            run_state: Default::default(),
         }
     }
 }
@@ -54,7 +64,11 @@ impl Screen for Main {
         let tx = self.tx.clone();
         let api = self.api.clone();
 
+        let state = self.run_state.clone();
+
         Some(tokio::spawn(async move {
+            //TODO match and then start specific tasks
+
             check_credentials(&api, &tx).await;
         }))
     }
