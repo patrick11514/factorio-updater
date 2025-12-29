@@ -1,12 +1,10 @@
 use std::time::Duration;
 
-use crate::{
-    app::{
-        api::Api,
-        components::popup::Popup,
-        screens::{Screen, login::Login, main::screen::Main},
-    },
+use crate::app::{
+    api::Api,
+    components::popup::Popup,
     config::Config,
+    screens::{Screen, login::Login, main::screen::Main},
 };
 use crossterm::event::{Event, EventStream, KeyCode, KeyEvent};
 use futures_util::StreamExt;
@@ -14,6 +12,7 @@ use ratatui::{DefaultTerminal, Frame, layout::Rect};
 
 mod api;
 mod components;
+mod config;
 mod screens;
 
 pub struct App<'a> {

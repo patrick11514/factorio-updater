@@ -1,6 +1,19 @@
-use ratatui::{layout, widgets::Block};
+use ratatui::{
+    Frame,
+    layout::{self, Rect},
+    symbols::border,
+    widgets::{Block, Wrap},
+};
 
-use crate::app::screens::main::screen::Main;
+use crate::{
+    app::{
+        api::structs::{Platform, Version},
+        components::log::Log,
+        config::{Config, InstalledVersion},
+        screens::main::screen::Main,
+    },
+    utils::with_title,
+};
 
 use std::sync::atomic;
 
@@ -34,17 +47,7 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
 
     frame.render_widget(outer, frame.area());
 
-    let title = Paragraph::new(
-        Line::from(format!("Factorio Updater - {}", main.api.config.username))
-            .style(Style::default().fg(Color::Indexed(208) /* Orange */).bold()),
-    )
-    .block(
-        Block::bordered()
-            .border_type(BorderType::Plain)
-            .merge_borders(MergeStrategy::Exact),
-    );
-
-    frame.render_widget(title, layout[0]);
+    render_title(&main.api.config, frame, layout[0]);
 
     let main_layout = Layout::default()
             .spacing(layout::Spacing::Overlap(1))
@@ -55,37 +58,92 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
             ])
             .split(layout[1]);
 
-    let installed_versions = border_with_title(
+    let installed_versions = &main.api.config.installed_versions;
+
+    render_installed_versions(frame, main_layout[0], installed_versions);
+    render_more_info(
         frame,
-        Line::from("Installed Versions").style(
+        main_layout[1],
+        main.selected_version
+            .and_then(|idx| installed_versions.get(idx)),
+    );
+
+    render_logs(frame, layout[2], &mut main.logs);
+}
+
+fn render_title(config: &Config, frame: &mut Frame, area: Rect) {
+    let title = Paragraph::new(
+        Line::from(format!("Factorio Updater - {}", config.username))
+            .style(Style::default().fg(Color::Indexed(208) /* Orange */).bold()),
+    )
+    .block(
+        Block::bordered()
+            .border_type(BorderType::Plain)
+            .merge_borders(MergeStrategy::Exact),
+    );
+
+    frame.render_widget(title, area);
+}
+
+fn render_installed_versions(frame: &mut Frame, area: Rect, installed: &Vec<InstalledVersion>) {
+    let title = if area.width > 50 {
+        "Installed Versions - [A] to install a new version"
+    } else {
+        "[A] Installed"
+    };
+
+    let area = border_with_title(
+        frame,
+        Line::from(title).style(
             Style::default()
                 .fg(Color::Indexed(112) /* Light Green */)
                 .bold(),
         ),
-        main_layout[0],
+        area,
     );
 
-    let more_info = border_with_title(
+    if installed.is_empty() {
+        let paragraph = Paragraph::new("No installed versions found")
+            .style(Style::default().fg(Color::Red).bold())
+            .wrap(Wrap { trim: false })
+            .centered();
+
+        frame.render_widget(paragraph, area);
+        return;
+    }
+}
+
+fn render_more_info(frame: &mut Frame, area: Rect, version: Option<&InstalledVersion>) {
+    let area = border_with_title(
         frame,
         Line::from("More Info").style(
             Style::default()
                 .fg(Color::Indexed(45) /* Light Blue */)
                 .bold(),
         ),
-        main_layout[1],
+        area,
     );
 
+    if let Some(version) = version {
+        todo!("Render more info about selected version");
+    } else {
+        let paragraph = Paragraph::new("No version selected")
+            .style(Style::default().fg(Color::Red).bold())
+            .wrap(Wrap { trim: false })
+            .centered();
+
+        frame.render_widget(paragraph, area);
+    }
+}
+
+fn render_logs(frame: &mut Frame, area: Rect, logs: &mut Vec<Box<Log>>) {
     let logs_container = border_with_title(
         frame,
         Line::from("Logs").style(Style::default().fg(Color::Indexed(196) /* Red */).bold()),
-        layout[2],
+        area,
     );
 
-    let items = main
-        .logs
-        .iter_mut()
-        .rev()
-        .map(|log| log.render(&logs_container));
+    let items = logs.iter_mut().rev().map(|log| log.render(&logs_container));
 
     let logs = List::new(items).direction(ListDirection::BottomToTop);
 

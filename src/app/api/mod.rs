@@ -3,8 +3,8 @@ use std::fmt::Display;
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 
-use crate::{app::api::structs::Updates, config::Config};
-pub mod structs;
+use crate::app::{api::structs::Updates, config::Config};
+pub(crate) mod structs;
 
 #[derive(Clone)]
 pub struct Api {

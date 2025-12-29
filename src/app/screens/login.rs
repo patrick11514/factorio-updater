@@ -7,13 +7,11 @@ use ratatui::{
     widgets::{Block, BorderType, Paragraph, Wrap},
 };
 
-use crate::{
-    app::{
-        api::Api,
-        components::{input::Input, popup::PopupResult},
-        screens::{ConstaintDirection, ConstrainExtend, Screen, ScreenEvent},
-    },
+use crate::app::{
+    api::Api,
+    components::{input::Input, popup::PopupResult},
     config::Config,
+    screens::{ConstaintDirection, ConstrainExtend, Screen, ScreenEvent},
 };
 
 #[derive(Default, PartialEq)]
@@ -99,6 +97,7 @@ impl Login {
         let config = Config {
             username: self.username.value().to_string(),
             token: self.token.value().to_string(),
+            installed_versions: Vec::new(),
         };
 
         config.save().await.unwrap();

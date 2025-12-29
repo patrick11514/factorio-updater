@@ -1,12 +1,21 @@
 use std::path::{Path, PathBuf};
 
+use crate::app::api::structs::{Platform, Version};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct InstalledVersion {
+    pub version: Version,
+    pub platform: Platform,
+    pub path: PathBuf,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub username: String,
     pub token: String,
+    pub installed_versions: Vec<InstalledVersion>,
 }
 
 #[derive(Debug)]
@@ -22,7 +31,11 @@ static FOLDER_NAME: &'static str = "factorio-updater";
 
 impl Config {
     pub fn new(username: String, token: String) -> Self {
-        Self { username, token }
+        Self {
+            username,
+            token,
+            installed_versions: Vec::new(),
+        }
     }
 
     pub async fn load() -> Result<Option<Self>, ConfigError> {

@@ -29,6 +29,7 @@ pub struct Main {
     pub(crate) rx: mpsc::Receiver<MainMessage>,
     pub(crate) tx: mpsc::Sender<MainMessage>,
     pub(crate) opened_popup: Option<OpenedPopup>,
+    pub(crate) selected_version: Option<usize>,
 }
 
 impl Main {
@@ -42,6 +43,7 @@ impl Main {
             rx,
             tx,
             opened_popup: None,
+            selected_version: None,
         }
     }
 }
