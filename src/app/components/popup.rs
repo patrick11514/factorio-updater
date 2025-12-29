@@ -38,6 +38,23 @@ pub struct Popup<'a> {
     popup_type: PopupType,
 }
 
+impl PopupBuilder<'_> {
+    pub fn success() -> Self {
+        let mut builder = Self::default();
+        builder
+            .border_style(Style::default().fg(style::Color::Green))
+            .title_style(Style::default().fg(style::Color::Green).bold());
+        builder
+    }
+    pub fn error() -> Self {
+        let mut builder = Self::default();
+        builder
+            .border_style(Style::default().fg(style::Color::Red))
+            .title_style(Style::default().fg(style::Color::Red).bold());
+        builder
+    }
+}
+
 impl Popup<'_> {
     pub fn handle_key(&mut self, ev: &KeyEvent) -> Option<PopupResult> {
         match ev.code {

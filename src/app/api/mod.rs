@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use crate::{app::api::structs::Updates, config::Config};
 pub mod structs;
 
+#[derive(Clone)]
 pub struct Api {
     pub config: Config,
 }

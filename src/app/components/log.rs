@@ -1,8 +1,13 @@
+use std::sync::{
+    Arc, Mutex,
+    atomic::{self, AtomicU8},
+};
+
 use derive_builder::Builder;
 use ratatui::{
     layout::Rect,
     style::{self, Style},
-    text::Line,
+    text::{Line, Span},
     widgets::ListItem,
 };
 
@@ -19,6 +24,22 @@ pub enum LogState {
     },
 }
 
+impl LogState {
+    pub fn finish(&mut self) {
+        if let LogState::InProgress { started_at, .. } = *self {
+            let duration = chrono::Local::now() - started_at;
+            *self = LogState::Finished(duration);
+        }
+    }
+
+    pub fn error(&mut self) {
+        if let LogState::InProgress { started_at, .. } = *self {
+            let duration = chrono::Local::now() - started_at;
+            *self = LogState::Errored(duration);
+        }
+    }
+}
+
 impl Default for LogState {
     fn default() -> Self {
         LogState::InProgress {
@@ -31,78 +52,114 @@ impl Default for LogState {
 #[derive(Clone, Debug)]
 pub enum LogType {
     Text(String),
-    Progress(u8),
+    Progress(Arc<AtomicU8>),
 }
 
 #[derive(Clone, Debug, Builder)]
 #[builder(setter(into))]
 pub struct Log {
-    #[builder(default)]
-    pub state: LogState,
+    #[builder(setter(custom))]
+    pub state: Arc<Mutex<LogState>>,
     pub log_type: LogType,
     #[builder(default = "chrono::Local::now()")]
     pub timestamp: chrono::DateTime<chrono::Local>,
 }
 
+impl LogBuilder {
+    pub fn state(&mut self, state: LogState) -> &mut Self {
+        self.state = Some(Arc::new(Mutex::new(state)));
+        self
+    }
+
+    pub fn text<T: Into<String>>(text: T) -> Self {
+        let mut builder = LogBuilder::default();
+        builder.log_type(LogType::Text(text.into()));
+        builder
+    }
+
+    pub fn progress(progress: u8) -> Self {
+        let mut builder = LogBuilder::default();
+        builder.log_type(LogType::Progress(Arc::new(AtomicU8::new(progress))));
+        builder
+    }
+}
+
 impl Log {
     pub fn render(&mut self, area: &Rect) -> ListItem<'static> {
-        let state_symbol = match &mut self.state {
-            LogState::Finished(_) => "✓",
-            LogState::Errored(_) => "✗",
-            LogState::InProgress { prev_char_idx, .. } => {
-                let char = TICK_STRINGS[*prev_char_idx / TICK_SLOW];
-                *prev_char_idx = (*prev_char_idx + 1) % (TICK_STRINGS.len() * TICK_SLOW);
+        let mut state = self.state.lock().unwrap();
 
-                char
-            }
-        };
-
-        let style = match self.state {
+        let style = match *state {
             LogState::Finished(_) => Style::default().fg(style::Color::Green),
             LogState::Errored(_) => Style::default().fg(style::Color::Red),
             LogState::InProgress { .. } => Style::default().fg(style::Color::Yellow),
         };
 
+        let state_symbol = Span::styled(
+            match *state {
+                LogState::Finished(dur) => format!("✓ ({}ms)", dur.num_milliseconds()),
+                LogState::Errored(dur) => format!("✗ ({}ms)", dur.num_milliseconds()),
+                LogState::InProgress {
+                    ref mut prev_char_idx,
+                    ..
+                } => {
+                    let char = TICK_STRINGS[*prev_char_idx / TICK_SLOW];
+                    *prev_char_idx = (*prev_char_idx + 1) % (TICK_STRINGS.len() * TICK_SLOW);
+
+                    char.to_string()
+                }
+            },
+            style,
+        );
         let timestamp = self.timestamp.format("%Y-%m-%d %H:%M:%S");
 
         let content = match &self.log_type {
-            LogType::Text(text) => text.clone(),
+            LogType::Text(text) => Span::styled(text.clone(), style),
             LogType::Progress(progress) => {
+                let progress = progress.load(atomic::Ordering::Relaxed).min(100);
+
                 let bar_length = (area.width as usize)
-                    .saturating_sub(21 /* timestamp */ + 3 /* symbol */ + 7 /* percentage*/);
-                let filled_length = (*progress as usize * bar_length) / 100;
+                    .saturating_sub(21 /* timestamp */ + 2 + state_symbol.content.len() /* symbol */ + 7 /* percentage*/);
+                let filled_length = (progress as usize * bar_length) / 100;
                 let bar = format!(
                     "[{}O{}] {}%",
                     "=".repeat(filled_length.saturating_sub(1)),
-                    " ".repeat(bar_length - filled_length),
+                    " ".repeat(bar_length.saturating_sub(filled_length)),
                     progress
                 );
 
-                bar
+                Span::styled(
+                    bar,
+                    Style::default().fg(match progress {
+                        0..=15 => style::Color::Indexed(196),
+                        16..=30 => style::Color::Indexed(202),
+                        31..=45 => style::Color::Indexed(208),
+                        46..=60 => style::Color::Indexed(214),
+                        61..=75 => style::Color::Indexed(226),
+                        76..=90 => style::Color::Indexed(118),
+                        91..=100 => style::Color::Indexed(46),
+                        _ => style::Color::White,
+                    }),
+                )
             }
         };
 
-        let content =
-            Line::from(format!("[{}] {} {}", timestamp, state_symbol, content)).style(style);
+        let content = Line::from(vec![
+            Span::from(format!("[{}] ", timestamp)),
+            state_symbol,
+            Span::from(" "),
+            content,
+        ]);
 
         ListItem::new(content)
     }
 
-    pub fn to_errored(&mut self) {
-        let duration = chrono::Local::now() - self.timestamp;
-        self.state = LogState::Errored(duration);
-    }
-
-    pub fn to_finished(&mut self) {
-        let duration = chrono::Local::now() - self.timestamp;
-        self.state = LogState::Finished(duration);
-    }
-
-    pub fn is_in_progress(&self) -> bool {
-        matches!(self.state, LogState::InProgress { .. })
-    }
-
-    pub fn is_finished(&self) -> bool {
-        matches!(self.state, LogState::Finished(_))
+    pub fn set_progresss(&self, amount: u8) {
+        if let LogType::Progress(ref progress) = self.log_type {
+            progress
+                .fetch_update(atomic::Ordering::Relaxed, atomic::Ordering::Relaxed, |_| {
+                    Some(amount.min(100))
+                })
+                .unwrap();
+        }
     }
 }

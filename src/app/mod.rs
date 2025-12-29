@@ -4,7 +4,7 @@ use crate::{
     app::{
         api::Api,
         components::popup::Popup,
-        screens::{Screen, login::Login, main::Main},
+        screens::{Screen, login::Login, main::screen::Main},
     },
     config::Config,
 };
@@ -19,6 +19,7 @@ mod screens;
 pub struct App<'a> {
     exited: bool,
     screen: Box<dyn Screen>,
+    screen_run_task: Option<tokio::task::JoinHandle<()>>,
     popup: Option<Popup<'a>>,
     event_rx: tokio::sync::mpsc::Receiver<Event>,
 }
@@ -39,7 +40,7 @@ impl App<'_> {
             }
         });
 
-        Self {
+        let mut app = Self {
             exited: false,
             screen: match config {
                 Some(config) => Box::new(Main::new(Api::new(config))),
@@ -47,7 +48,12 @@ impl App<'_> {
             },
             popup: None,
             event_rx: rx,
-        }
+            screen_run_task: None,
+        };
+
+        app.screen.run();
+
+        app
     }
 
     pub async fn main_loop(mut self, term: &mut DefaultTerminal) -> anyhow::Result<()> {
@@ -60,7 +66,11 @@ impl App<'_> {
                 event = self.event_rx.recv()  => {
                     self.handle_event(event.unwrap()).await;
                 }
-                _ = ticker.tick() => {}
+                _ = ticker.tick() => {
+                    if let Some(ev) = self.screen.tick() {
+                        self.handle_screen_event(ev);
+                    }
+                }
             }
         }
 
@@ -139,15 +149,34 @@ impl App<'_> {
         };
 
         if let Some(screen_ev) = screen_result {
-            match screen_ev {
-                screens::ScreenEvent::Logged(config) => self.screen = Box::new(Main::new(config)),
-                screens::ScreenEvent::OpenPopup(popup) => self.popup = Some(popup),
-                screens::ScreenEvent::ClosePopup => self.popup = None,
+            self.handle_screen_event(screen_ev);
+        }
+    }
+
+    fn handle_screen_event(&mut self, event: screens::ScreenEvent) {
+        match event {
+            screens::ScreenEvent::Logged(config) => self.switch_screen(Main::new(config)),
+            screens::ScreenEvent::OpenPopup(popup) => self.popup = Some(popup),
+            screens::ScreenEvent::ClosePopup => self.popup = None,
+            screens::ScreenEvent::Logout => {
+                self.popup = None;
+                self.switch_screen(Login::default());
             }
         }
     }
 
     fn handle_exit(&mut self) {
         self.exited = true;
+    }
+
+    fn switch_screen<T: Screen + 'static>(&mut self, screen: T) {
+        if let Some(handle) = self.screen_run_task.take() {
+            handle.abort();
+        }
+
+        self.screen = Box::new(screen);
+        let handle = self.screen.run();
+
+        self.screen_run_task = handle;
     }
 }

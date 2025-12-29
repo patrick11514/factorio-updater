@@ -9,6 +9,7 @@ use ratatui::{
     Frame,
     layout::{Constraint, Rect},
 };
+use tokio::task::JoinHandle;
 
 use crate::app::{
     api::Api,
@@ -16,14 +17,30 @@ use crate::app::{
 };
 
 #[async_trait]
-pub trait Screen {
+pub trait Screen: Send {
+    /// Method called once for initialization
+    fn run(&mut self) -> Option<JoinHandle<()>> {
+        None
+    }
+    /// Method called on every tick
+    fn tick(&mut self) -> Option<ScreenEvent> {
+        None
+    }
+    /// Method called on key event
+    async fn on_key(&mut self, _: &KeyEvent) -> Option<ScreenEvent> {
+        None
+    }
+    /// Method called on popup result
+    async fn on_popup(&mut self, _: PopupResult) -> Option<ScreenEvent> {
+        None
+    }
+    /// Method to render the screen
     fn render(&mut self, frame: &mut Frame);
-    async fn on_key(&mut self, key: &KeyEvent) -> Option<ScreenEvent>;
-    async fn on_popup(&mut self, result: PopupResult) -> Option<ScreenEvent>;
 }
 
 pub enum ScreenEvent {
     Logged(Api),
+    Logout,
     OpenPopup(Popup<'static>),
     ClosePopup,
 }
