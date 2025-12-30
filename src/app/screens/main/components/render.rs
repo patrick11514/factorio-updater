@@ -1,11 +1,11 @@
 use ratatui::{
     Frame,
     layout::{self, Rect},
-    widgets::{Block, Wrap},
+    widgets::{Block, HighlightSpacing, ListState, Wrap},
 };
 
 use crate::app::{
-    components::log::Log,
+    components::log::{Log, LogState},
     config::{Config, InstalledVersion},
     screens::main::screen::Main,
 };
@@ -135,7 +135,11 @@ fn render_logs(frame: &mut Frame, area: Rect, logs: &mut Vec<Box<Log>>) {
 
     let items = logs.iter_mut().rev().map(|log| log.render(&logs_container));
 
-    let logs = List::new(items).direction(ListDirection::BottomToTop);
+    let logs = List::new(items)
+        .direction(ListDirection::BottomToTop)
+        .highlight_style(Style::default().bg(Color::Blue).fg(Color::White).bold())
+        .highlight_symbol(">")
+        .highlight_spacing(HighlightSpacing::Always);
 
     frame.render_widget(logs, logs_container);
 }

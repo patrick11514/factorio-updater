@@ -5,7 +5,10 @@ use ratatui::{
     layout::{self, Constraint, Layout, Rect},
     style::{self, Style, Stylize},
     text::{Line, Text},
-    widgets::{Block, BorderType, Borders, Clear, Paragraph, Widget, Wrap},
+    widgets::{
+        Block, BorderType, Borders, Clear, List, ListState, Paragraph, Scrollbar,
+        ScrollbarOrientation, ScrollbarState, StatefulWidget, Widget, Wrap,
+    },
 };
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -22,35 +25,106 @@ pub enum PopupResult {
     No,
 }
 
+#[derive(Debug, Clone)]
+pub enum PopupContent {
+    Text(Line<'static>),
+    Paragraph(Paragraph<'static>),
+    Select(
+        ListState,
+        ScrollbarState,
+        Vec<Line<'static>>,
+        Option<Paragraph<'static>>,
+    ),
+}
+
+impl Default for PopupContent {
+    fn default() -> Self {
+        PopupContent::Text(Line::from(""))
+    }
+}
+
+impl From<Line<'static>> for PopupContent {
+    fn from(line: Line<'static>) -> Self {
+        PopupContent::Text(line)
+    }
+}
+
+impl From<Paragraph<'static>> for PopupContent {
+    fn from(paragraph: Paragraph<'static>) -> Self {
+        PopupContent::Paragraph(paragraph)
+    }
+}
+
+fn initialize_states(lines: &Vec<Line<'static>>) -> (ListState, ScrollbarState) {
+    let mut state = ListState::default();
+    let mut scrollbar_state = ScrollbarState::default().content_length(lines.len());
+
+    if !lines.is_empty() {
+        state.select(Some(0));
+        scrollbar_state = scrollbar_state.position(0);
+    }
+
+    (state, scrollbar_state)
+}
+
+impl From<Vec<Line<'static>>> for PopupContent {
+    fn from(lines: Vec<Line<'static>>) -> Self {
+        let (state, scrollbar_state) = initialize_states(&lines);
+
+        PopupContent::Select(state, scrollbar_state, lines, None)
+    }
+}
+
+impl From<(Vec<Line<'static>>, Paragraph<'static>)> for PopupContent {
+    fn from((lines, paragraph): (Vec<Line<'static>>, Paragraph<'static>)) -> Self {
+        let (state, scrollbar_state) = initialize_states(&lines);
+
+        PopupContent::Select(state, scrollbar_state, lines, Some(paragraph))
+    }
+}
+
+#[derive(Debug, Clone, Copy, Default)]
+pub enum PopupSize {
+    #[default]
+    Small,
+    Medium,
+    Large,
+}
+
 #[derive(Debug, Default, Clone, Builder)]
 #[builder(setter(into))]
 pub struct Popup<'a> {
     #[builder(setter(into, strip_option), default)]
     title: Option<Line<'a>>,
-    content: Text<'a>,
+    #[builder(setter(into))]
+    content: PopupContent,
     #[builder(default)]
     border_style: Style,
     #[builder(default)]
     title_style: Style,
     #[builder(default)]
-    style: Style,
-    #[builder(default)]
     popup_type: PopupType,
+    #[builder(default)]
+    pub(crate) size: PopupSize,
 }
 
 impl PopupBuilder<'_> {
-    pub fn success() -> Self {
-        let mut builder = Self::default();
-        builder
-            .border_style(Style::default().fg(style::Color::Green))
+    pub fn success(&mut self) -> &mut Self {
+        self.border_style(Style::default().fg(style::Color::Green))
             .title_style(Style::default().fg(style::Color::Green).bold());
-        builder
+        self
     }
-    pub fn error() -> Self {
-        let mut builder = Self::default();
-        builder
-            .border_style(Style::default().fg(style::Color::Red))
+    pub fn error(&mut self) -> &mut Self {
+        self.border_style(Style::default().fg(style::Color::Red))
             .title_style(Style::default().fg(style::Color::Red).bold());
+        self
+    }
+
+    pub fn text<I: Into<Text<'static>>>(text: I) -> Self {
+        let line = Paragraph::new(text).wrap(Wrap { trim: true }).centered();
+
+        let mut builder = Self::default();
+        builder.content(line);
         builder
     }
 }
@@ -64,9 +138,31 @@ impl Popup<'_> {
             _ => None,
         }
     }
+
+    pub fn handle_control(&mut self, control: PopupControl) {
+        if let PopupContent::Select(state, scrollbar_state, items, _) = &mut self.content {
+            match control {
+                PopupControl::Next => {
+                    let current = state.selected();
+                    if let Some(idx) = current {
+                        if idx + 1 >= items.len() {
+                            return;
+                        }
+                    }
+
+                    state.select_next();
+                    scrollbar_state.next();
+                }
+                PopupControl::Previous => {
+                    state.select_previous();
+                    scrollbar_state.prev();
+                }
+            }
+        }
+    }
 }
 
-impl Widget for Popup<'_> {
+impl Widget for &mut Popup<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         Clear.render(area, buf);
 
@@ -76,8 +172,8 @@ impl Widget for Popup<'_> {
             .border_type(BorderType::Plain)
             .border_style(self.border_style);
 
-        if let Some(title) = self.title {
-            block = block.title(title);
+        if let Some(title) = &self.title {
+            block = block.title(title.clone());
         }
 
         let inner = block.inner(area);
@@ -89,11 +185,50 @@ impl Widget for Popup<'_> {
             .constraints(vec![Constraint::Fill(1), Constraint::Length(1)])
             .split(inner);
 
-        Paragraph::new(self.content)
-            .wrap(Wrap { trim: true })
-            .centered()
-            .style(self.style)
-            .render(layout[0], buf);
+        match &self.content {
+            PopupContent::Text(line) => Paragraph::new(line.clone())
+                .centered()
+                .wrap(Wrap { trim: true })
+                .render(layout[0], buf),
+            PopupContent::Paragraph(paragraph) => paragraph.render(layout[0], buf),
+            PopupContent::Select(list_state, scrollbar_state, lines, paragraph) => {
+                let area = match paragraph {
+                    Some(paragraph) => {
+                        let layout = Layout::default()
+                            .direction(layout::Direction::Vertical)
+                            .constraints(vec![
+                                Constraint::Min(1),
+                                Constraint::Max(lines.len() as u16),
+                            ])
+                            .split(layout[0]);
+                        paragraph.render(layout[0], buf);
+                        layout[1]
+                    }
+                    None => layout[0],
+                };
+
+                let list = List::new(
+                    lines
+                        .into_iter()
+                        .map(|line| ratatui::widgets::ListItem::new(line.clone()))
+                        .collect::<Vec<ratatui::widgets::ListItem>>(),
+                )
+                .block(Block::default())
+                .highlight_style(Style::default().fg(style::Color::Yellow).bold())
+                .highlight_symbol(">> ");
+
+                StatefulWidget::render(list, area, buf, &mut list_state.clone());
+
+                let scrollbar = Scrollbar::default()
+                    .orientation(ScrollbarOrientation::VerticalRight)
+                    .begin_symbol(Some("▴"))
+                    .end_symbol(Some("▾"))
+                    .track_symbol(Some("│"))
+                    .thumb_symbol("█");
+
+                StatefulWidget::render(scrollbar, area, buf, &mut scrollbar_state.clone());
+            }
+        }
 
         match self.popup_type {
             PopupType::Ok => {
@@ -120,4 +255,9 @@ impl Widget for Popup<'_> {
             }
         }
     }
+}
+
+pub enum PopupControl {
+    Next,
+    Previous,
 }

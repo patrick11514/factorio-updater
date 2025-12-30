@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ratatui::text::Line;
+use reqwest::Version;
 
 use crate::app::{
     api::Response,
@@ -11,9 +12,19 @@ use crate::app::{
     },
 };
 
+#[derive(Debug, Default, Clone)]
+pub enum VersionCreateStep {
+    #[default]
+    SelectingArch,
+    SelectingVersion,
+    SelectingPath,
+}
+
+#[derive(Debug, Clone)]
 pub enum OpenedPopup {
     LogoutNotify,
     ErrorNotify,
+    VersionCreate(VersionCreateStep),
 }
 
 pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
@@ -27,9 +38,9 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                     state.lock().unwrap().error();
                     main.opened_popup = Some(OpenedPopup::LogoutNotify);
                     return Some(ScreenEvent::OpenPopup(
-                        PopupBuilder::error()
+                        PopupBuilder::text("Username or token is invalid, please login again.")
+                            .error()
                             .title(Line::from("Logout").centered())
-                            .content("Username or token is invalid, please login again.")
                             .build()
                             .unwrap(),
                     ));
@@ -38,14 +49,14 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                     state.lock().unwrap().error();
                     main.opened_popup = Some(OpenedPopup::ErrorNotify);
                     return Some(ScreenEvent::OpenPopup(
-                        PopupBuilder::error()
-                            .title(Line::from("Checking Credentials").centered())
-                            .content(format!(
-                                "An error occurred while checking credentials:\n{}",
-                                err
-                            ))
-                            .build()
-                            .unwrap(),
+                        PopupBuilder::text(format!(
+                            "An error occurred while checking credentials:\n{}",
+                            err
+                        ))
+                        .error()
+                        .title(Line::from("Checking Credentials").centered())
+                        .build()
+                        .unwrap(),
                     ));
                 }
             },
@@ -64,14 +75,14 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                         state.lock().unwrap().error();
                         main.opened_popup = Some(OpenedPopup::ErrorNotify);
                         return Some(ScreenEvent::OpenPopup(
-                            PopupBuilder::error()
-                                .title(Line::from("Fetching Versions").centered())
-                                .content(format!(
-                                    "Failed to fetch available versions:\n{}",
-                                    error_response.message
-                                ))
-                                .build()
-                                .unwrap(),
+                            PopupBuilder::text(format!(
+                                "Failed to fetch available versions:\n{}",
+                                error_response.message
+                            ))
+                            .error()
+                            .title(Line::from("Fetching Versions").centered())
+                            .build()
+                            .unwrap(),
                         ));
                     }
                 },
@@ -79,14 +90,14 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                     state.lock().unwrap().error();
                     main.opened_popup = Some(OpenedPopup::ErrorNotify);
                     return Some(ScreenEvent::OpenPopup(
-                        PopupBuilder::error()
-                            .title(Line::from("Fetching Versions").centered())
-                            .content(format!(
-                                "An error occurred while fetching available versions:\n{}",
-                                err
-                            ))
-                            .build()
-                            .unwrap(),
+                        PopupBuilder::text(format!(
+                            "An error occurred while fetching available versions:\n{}",
+                            err
+                        ))
+                        .error()
+                        .title(Line::from("Fetching Versions").centered())
+                        .build()
+                        .unwrap(),
                     ));
                 }
             },

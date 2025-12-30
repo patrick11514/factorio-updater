@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use crate::app::{
     api::Api,
-    components::popup::Popup,
+    components::popup::{Popup, PopupSize},
     config::Config,
     screens::{Screen, login::Login, main::screen::Main},
 };
@@ -79,22 +79,34 @@ impl App<'_> {
     fn draw(&mut self, frame: &mut Frame) {
         self.screen.render(frame);
 
-        if let Some(popup) = &self.popup {
+        if let Some(popup) = &mut self.popup {
             let area = frame.area();
 
             //2k = 227
             let ratio = if area.width > 200 {
-                7
+                match popup.size {
+                    PopupSize::Small => 7,
+                    PopupSize::Medium => 5,
+                    PopupSize::Large => 3,
+                }
             } else if area.width > 100 {
-                5
+                match popup.size {
+                    PopupSize::Small => 5,
+                    PopupSize::Medium => 3,
+                    PopupSize::Large => 2,
+                }
             } else if area.width > 50 {
-                3
+                match popup.size {
+                    PopupSize::Small => 3,
+                    PopupSize::Medium => 2,
+                    PopupSize::Large => 1,
+                }
             } else {
                 1
             };
 
             frame.render_widget(
-                popup.clone(),
+                popup,
                 if ratio == 1 {
                     Rect {
                         x: 0,
@@ -163,6 +175,11 @@ impl App<'_> {
             }
             screens::ScreenEvent::RunInit => {
                 self.screen.init();
+            }
+            screens::ScreenEvent::PopupControl(popup_control) => {
+                if let Some(popup) = &mut self.popup {
+                    popup.handle_control(popup_control);
+                }
             }
         }
     }

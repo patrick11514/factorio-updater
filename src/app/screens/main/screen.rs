@@ -1,23 +1,19 @@
-use std::{pin::Pin, sync::Arc, thread::current};
+use std::sync::Arc;
 
 use async_trait::async_trait;
 use crossterm::event::KeyEvent;
-use ratatui::text::Line;
+use ratatui::widgets::ListState;
 use tokio::{sync::mpsc, task::JoinHandle};
 
 use crate::app::{
-    api::{
-        Api,
-        structs::{Updates, Version},
-    },
-    components::{
-        log::{Log, LogBuilder, LogState},
-        popup::{PopupBuilder, PopupResult},
-    },
+    api::{Api, structs::Updates},
+    components::{log::Log, popup::PopupResult},
     screens::{
         Screen, ScreenEvent,
         main::{
             components::{
+                on_key::on_key,
+                on_popup::on_popup,
                 render::render,
                 run::{
                     InstalledVersionDetails, RunState, check_credentials, check_for_updates,
@@ -111,28 +107,11 @@ impl Screen for Main {
         render(self, frame);
     }
 
-    async fn on_key(&mut self, _: &KeyEvent) -> Option<ScreenEvent> {
-        None
+    async fn on_key(&mut self, ev: &KeyEvent) -> Option<ScreenEvent> {
+        on_key(self, ev).await
     }
 
     async fn on_popup(&mut self, res: PopupResult) -> Option<ScreenEvent> {
-        if let Some(opened) = &self.opened_popup {
-            match res {
-                PopupResult::Ok => match opened {
-                    OpenedPopup::LogoutNotify => Some(ScreenEvent::Logout),
-                    OpenedPopup::ErrorNotify => {
-                        self.opened_popup = None;
-
-                        // Retry checking credentials
-                        self.init();
-
-                        Some(ScreenEvent::ClosePopup)
-                    }
-                },
-                _ => None,
-            }
-        } else {
-            None
-        }
+        on_popup(self, res).await
     }
 }

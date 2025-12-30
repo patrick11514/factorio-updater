@@ -13,7 +13,7 @@ use tokio::task::JoinHandle;
 
 use crate::app::{
     api::Api,
-    components::popup::{Popup, PopupResult},
+    components::popup::{Popup, PopupControl, PopupResult},
 };
 
 #[async_trait]
@@ -44,6 +44,7 @@ pub enum ScreenEvent {
     OpenPopup(Popup<'static>),
     ClosePopup,
     RunInit,
+    PopupControl(PopupControl),
 }
 
 pub enum ConstaintDirection {

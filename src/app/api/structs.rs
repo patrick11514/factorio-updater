@@ -10,11 +10,13 @@ pub enum Version {
     SpaceAge,
 }
 
+pub static ALL_VERSIONS: &[Version] = &[Version::Vanilla, Version::SpaceAge];
+
 impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Version::Vanilla => write!(f, "vanilla"),
-            Version::SpaceAge => write!(f, "space-age"),
+            Version::Vanilla => write!(f, "Vanilla"),
+            Version::SpaceAge => write!(f, "Space Age"),
         }
     }
 }
@@ -36,6 +38,30 @@ pub enum Platform {
     #[serde(rename = "win64")]
     Win64,
 }
+
+impl Display for Platform {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Platform::Linux32 => write!(f, "Linux 32-bit"),
+            Platform::Linux64 => write!(f, "Linux 64-bit"),
+            Platform::Mac => write!(f, "Mac"),
+            Platform::MacArm64 => write!(f, "Mac ARM64"),
+            Platform::MacX64 => write!(f, "Mac x64"),
+            Platform::Win32 => write!(f, "Windows 32-bit"),
+            Platform::Win64 => write!(f, "Windows 64-bit"),
+        }
+    }
+}
+
+pub static ALL_PLATFORMS: &[Platform] = &[
+    Platform::Linux32,
+    Platform::Linux64,
+    Platform::Mac,
+    Platform::MacArm64,
+    Platform::MacX64,
+    Platform::Win32,
+    Platform::Win64,
+];
 
 #[derive(Serialize, Deserialize, Debug, Clone, ValueEnum, PartialEq, Eq, Hash)]
 pub enum Arch {
