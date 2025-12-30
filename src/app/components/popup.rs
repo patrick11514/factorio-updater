@@ -1,11 +1,11 @@
-use std::env;
+#![allow(dead_code)]
 
 use crossterm::event::{KeyCode, KeyEvent};
 use derive_builder::Builder;
 use ratatui::{
     buffer::Buffer,
     layout::{self, Constraint, Layout, Rect},
-    style::{self, Style, Stylize},
+    style::{self, Style},
     text::{Line, Text},
     widgets::{
         Block, BorderType, Borders, Clear, List, ListState, Paragraph, Scrollbar,
@@ -41,7 +41,7 @@ pub enum PopupContent {
         Vec<Line<'static>>,
         Option<Paragraph<'static>>,
     ),
-    Input(Input),
+    Input(Input<'static>),
 }
 
 impl Default for PopupContent {
@@ -90,6 +90,18 @@ impl From<(Vec<Line<'static>>, Paragraph<'static>)> for PopupContent {
     }
 }
 
+impl From<String> for PopupContent {
+    fn from(input: String) -> Self {
+        PopupContent::Text(Line::from(input))
+    }
+}
+
+impl From<&str> for PopupContent {
+    fn from(input: &str) -> Self {
+        PopupContent::Text(Line::from(input.to_string()))
+    }
+}
+
 #[derive(Debug, Clone, Copy, Default)]
 pub enum PopupSize {
     #[default]
@@ -135,22 +147,22 @@ impl PopupBuilder<'_> {
         builder
     }
 
-    pub fn input<I: Into<String>>(input: I) -> Self {
-        let mut builder = Self::default();
-
+    pub fn input<I: Into<String>>(&mut self, input: I) -> &mut Self {
         let input = InputBuilder::default()
             .selected()
             .with_value(input)
             .build()
             .unwrap();
 
-        builder.content(PopupContent::Input(input));
-        builder
+        self.content(PopupContent::Input(input));
+        self
     }
 
-    pub fn input_title<T: Into<String>>(title: T, input: T) -> Self {
-        let mut builder = Self::default();
-
+    pub fn input_title<I: Into<Line<'static>>, T: Into<String>>(
+        &mut self,
+        title: I,
+        input: T,
+    ) -> &mut Self {
         let input = InputBuilder::default()
             .title(title)
             .selected()
@@ -158,8 +170,8 @@ impl PopupBuilder<'_> {
             .build()
             .unwrap();
 
-        builder.content(PopupContent::Input(input));
-        builder
+        self.content(PopupContent::Input(input));
+        self
     }
 }
 
@@ -174,10 +186,31 @@ impl Popup<'_> {
                 }
                 None
             }
-            KeyCode::Enter if self.popup_type == PopupType::Ok => Some(PopupResult::Ok),
+            KeyCode::Enter if self.popup_type == PopupType::Ok => {
+                if self.is_select() {
+                    if let PopupContent::Select(state, _, _, _) = &self.content {
+                        if let Some(idx) = state.selected() {
+                            return Some(PopupResult::OkSelect(idx));
+                        }
+                    }
+                    None
+                } else if self.is_input() {
+                    if let PopupContent::Input(input) = &self.content {
+                        return Some(PopupResult::OkInput(input.value().to_string()));
+                    }
+                    None
+                } else {
+                    Some(PopupResult::Ok)
+                }
+            }
             KeyCode::Char('y') if self.popup_type == PopupType::YesNo => Some(PopupResult::Yes),
             KeyCode::Char('n') if self.popup_type == PopupType::YesNo => Some(PopupResult::No),
-            _ => None,
+            _ => {
+                if let PopupContent::Input(input) = &mut self.content {
+                    input.handle_key(ev);
+                }
+                None
+            }
         }
     }
 
@@ -199,12 +232,25 @@ impl Popup<'_> {
                     state.select_previous();
                     scrollbar_state.prev();
                 }
+                _ => {}
+            }
+        }
+        if let PopupContent::Input(input) = &mut self.content {
+            match control {
+                PopupControl::SetError(err) => {
+                    input.set_error(Some(&err));
+                }
+                _ => {}
             }
         }
     }
 
     fn is_select(&self) -> bool {
         matches!(self.content, PopupContent::Select(_, _, _, _))
+    }
+
+    fn is_input(&self) -> bool {
+        matches!(self.content, PopupContent::Input(_))
     }
 }
 
@@ -310,4 +356,5 @@ impl Widget for &mut Popup<'_> {
 pub enum PopupControl {
     Next,
     Previous,
+    SetError(String),
 }

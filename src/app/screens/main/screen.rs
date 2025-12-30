@@ -90,9 +90,9 @@ impl Screen for Main {
                     }
                     Some(next_state) => {
                         current_state = next_state;
-                        tx.send(MainMessage::ChangeRunState(current_state.clone()))
-                            .await
-                            .unwrap();
+                        let _ = tx
+                            .send(MainMessage::ChangeRunState(current_state.clone()))
+                            .await;
                     }
                 }
             }

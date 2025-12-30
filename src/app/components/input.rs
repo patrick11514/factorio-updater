@@ -4,7 +4,8 @@ use crossterm::event::{Event, KeyEvent};
 use derive_builder::Builder;
 use ratatui::{
     style::{Color, Style},
-    widgets::{Block, Paragraph},
+    text::Line,
+    widgets::{Block, Paragraph, TitlePosition, Wrap},
 };
 use tui_input::{Input as NativeInput, backend::crossterm::EventHandler};
 
@@ -13,27 +14,37 @@ pub enum InputType {
     #[default]
     Text,
     Password,
+    Path,
 }
 
 #[derive(Default, Debug, Clone, Builder)]
 #[builder(setter(into))]
-pub struct Input {
+pub struct Input<'a> {
     native_input: NativeInput,
-    #[builder(setter(strip_option))]
+    #[builder(setter(strip_option), default)]
     error: Option<String>,
+    #[builder(default)]
     selected_style: Style,
+    #[builder(default)]
     unselected_style: Style,
+    #[builder(default)]
     input_type: InputType,
     #[builder(default, setter(strip_option))]
-    title: Option<String>,
+    title: Option<Line<'a>>,
     #[builder(default, setter(custom))]
     selected: bool,
 }
 
-impl InputBuilder {
+impl InputBuilder<'_> {
     pub fn password() -> Self {
         let mut builder = Self::default();
         builder.input_type(InputType::Password);
+        builder
+    }
+
+    pub fn path() -> Self {
+        let mut builder = Self::default();
+        builder.input_type(InputType::Path);
         builder
     }
 
@@ -49,7 +60,7 @@ impl InputBuilder {
     }
 }
 
-impl Input {
+impl Input<'_> {
     pub fn set_selected(&mut self, selected: bool) {
         self.selected = selected;
     }
@@ -61,29 +72,40 @@ impl Input {
         };
     }
 
+    pub fn have_error(&self) -> bool {
+        self.error.is_some()
+    }
+
     pub fn render(&mut self) -> Paragraph<'_> {
         let mut block = Block::bordered();
 
+        // 1. Render the main Title (Top Left)
         if let Some(title) = &self.title {
             block = block.title(title.clone());
         }
 
+        // 2. Render the Error (Bottom Left + Red Border)
         if let Some(error) = &self.error {
-            block = block
-                .title(error.clone())
-                .title_style(Style::new().fg(Color::Red))
-        }
+            // UX Tip: Turn the whole border red so the user notices immediately
+            block = block.border_style(Style::default().fg(Color::Red));
 
-        if self.selected {
-            block = block.style(self.selected_style);
+            // Add the error message to the BOTTOM
+            block = block.title_bottom(error.clone())
         } else {
-            block = block.style(self.unselected_style);
+            // Normal styling if no error
+            if self.selected {
+                block = block.style(self.selected_style);
+            } else {
+                block = block.style(self.unselected_style);
+            }
         }
 
         Paragraph::new(match self.input_type {
             InputType::Text => self.native_input.value().to_string(),
             InputType::Password => "*".repeat(self.native_input.value().len()),
+            InputType::Path => self.native_input.value().to_string(),
         })
+        .wrap(Wrap { trim: false })
         .block(block)
     }
 

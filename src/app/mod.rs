@@ -14,6 +14,8 @@ mod api;
 mod components;
 mod config;
 mod screens;
+mod utils;
+mod workflows;
 
 pub struct App<'a> {
     exited: bool,
@@ -33,7 +35,9 @@ impl App<'_> {
             let mut stream = EventStream::default();
             while let Some(event) = stream.next().await {
                 match event {
-                    Ok(event) => tx.send(event).await.unwrap(),
+                    Ok(event) => {
+                        let _ = tx.send(event).await;
+                    }
                     _ => {}
                 }
             }
@@ -135,6 +139,8 @@ impl App<'_> {
     }
 
     async fn handle_key(&mut self, ev: &KeyEvent) {
+        let soft_exit = matches!(ev.code, KeyCode::Char('q') | KeyCode::Esc);
+
         let is_exit = matches!(
             ev.code,
             KeyCode::Char('c')
@@ -142,7 +148,18 @@ impl App<'_> {
                     .modifiers
                     .contains(crossterm::event::KeyModifiers::CONTROL)
 
-        ) || matches!(ev.code, KeyCode::Char('q') | KeyCode::Esc);
+        );
+
+        if soft_exit {
+            match self.popup {
+                Some(_) => {
+                    self.popup = None;
+                }
+                None => {
+                    self.handle_exit();
+                }
+            }
+        }
 
         if is_exit {
             self.handle_exit();

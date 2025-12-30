@@ -8,6 +8,7 @@ use crate::app::{
     components::log::{Log, LogState},
     config::{Config, InstalledVersion},
     screens::main::screen::Main,
+    utils::border_with_title,
 };
 
 use ratatui::{
@@ -17,8 +18,6 @@ use ratatui::{
     text::Line,
     widgets::{BorderType, List, ListDirection, Paragraph},
 };
-
-use crate::utils::border_with_title;
 
 pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
     let outer = Block::default();

@@ -15,11 +15,12 @@ use crate::app::{
             screen::Main,
         },
     },
+    utils::ORANGE,
 };
 
 pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
     match ev.code {
-        KeyCode::Char('a') if main.opened_popup.is_none() => {
+        KeyCode::Char('a') | KeyCode::Char('A') if main.opened_popup.is_none() => {
             main.opened_popup = Some(OpenedPopup::VersionCreate(Default::default()));
 
             let lines = ALL_PLATFORMS
@@ -28,7 +29,7 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
                 .collect::<Vec<_>>();
 
             let paragraph = Paragraph::new("Select architecture:")
-                .style(Style::default().fg(Color::Indexed(202)).bold())
+                .style(Style::default().fg(ORANGE).bold())
                 .centered()
                 .wrap(Wrap { trim: false });
 
@@ -64,6 +65,11 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
             } else {
                 None
             }
+        }
+        KeyCode::Char('q') | KeyCode::Esc => {
+            main.opened_popup = None;
+            //Real popup closed in App::on_key
+            None
         }
         _ => None,
     }

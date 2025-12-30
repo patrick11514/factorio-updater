@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use std::sync::{
     Arc, Mutex,
     atomic::{self, AtomicU8},
@@ -10,6 +12,8 @@ use ratatui::{
     text::{Line, Span},
     widgets::ListItem,
 };
+
+use crate::app::utils::ORANGE;
 
 static TICK_STRINGS: &[&'static str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 static TICK_SLOW: usize = 4;
@@ -131,7 +135,7 @@ impl Log {
                     bar,
                     Style::default().fg(match progress {
                         0..=15 => style::Color::Indexed(196),
-                        16..=30 => style::Color::Indexed(202),
+                        16..=30 => ORANGE,
                         31..=45 => style::Color::Indexed(208),
                         46..=60 => style::Color::Indexed(214),
                         61..=75 => style::Color::Indexed(226),

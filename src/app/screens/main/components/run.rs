@@ -29,27 +29,21 @@ pub async fn check_credentials(api: &Api, tx: &Sender<MainMessage>) -> Option<Ru
         .unwrap();
 
     let state = log.state.clone();
-    tx.send(MainMessage::CreateLog(log)).await.unwrap();
+    let _ = tx.send(MainMessage::CreateLog(log));
 
     match api.check_credentials().await {
         Ok(creds) => match creds {
             true => {
-                tx.send(MainMessage::CheckLogin(Ok(Some(())), state))
-                    .await
-                    .unwrap();
+                let _ = tx.send(MainMessage::CheckLogin(Ok(Some(())), state)).await;
                 return Some(RunState::FetchingVersions);
             }
             false => {
-                tx.send(MainMessage::CheckLogin(Ok(None), state))
-                    .await
-                    .unwrap();
+                let _ = tx.send(MainMessage::CheckLogin(Ok(None), state)).await;
                 return None;
             }
         },
         Err(err) => {
-            tx.send(MainMessage::CheckLogin(Err(err), state))
-                .await
-                .unwrap();
+            let _ = tx.send(MainMessage::CheckLogin(Err(err), state)).await;
             return None;
         }
     };
@@ -62,18 +56,16 @@ pub async fn fetch_versions(api: &Api, tx: &Sender<MainMessage>) -> Option<RunSt
         .unwrap();
 
     let state = log.state.clone();
-    tx.send(MainMessage::CreateLog(log)).await.unwrap();
+    let _ = tx.send(MainMessage::CreateLog(log));
 
-    let result = api.get_versions().await;
+    let result = api.get_patches().await;
 
     let next_state = match &result {
         Ok(_) => Some(RunState::Idle),
         Err(_) => None,
     };
 
-    tx.send(MainMessage::LoadVersions(result, state))
-        .await
-        .unwrap();
+    let _ = tx.send(MainMessage::LoadVersions(result, state)).await;
 
     next_state
 }
@@ -106,7 +98,7 @@ pub async fn check_for_updates(
         .unwrap();
 
     let state = log.state.clone();
-    tx.send(MainMessage::CreateLog(log)).await.unwrap();
+    let _ = tx.send(MainMessage::CreateLog(log));
 
     let version_details = installed_versions
         .into_iter()
@@ -170,9 +162,9 @@ pub async fn check_for_updates(
         })
         .collect();
 
-    tx.send(MainMessage::VersionDetails(version_details, state))
-        .await
-        .unwrap();
+    let _ = tx
+        .send(MainMessage::VersionDetails(version_details, state))
+        .await;
 
     Some(RunState::Idle)
 }

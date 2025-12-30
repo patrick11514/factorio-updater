@@ -1,6 +1,6 @@
-use clap::{Parser, ValueEnum, command};
+use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, fmt::Display};
+use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 #[derive(Serialize, Deserialize, Debug, ValueEnum, Clone)]
 pub enum Version {
@@ -11,6 +11,15 @@ pub enum Version {
 }
 
 pub static ALL_VERSIONS: &[Version] = &[Version::Vanilla, Version::SpaceAge];
+
+pub fn get_versions_by_platform(platform: &Platform) -> Vec<Version> {
+    ALL_VERSIONS
+        .iter()
+        .map(|version| (version, Arch::from((version, platform))))
+        .filter(|(_, arch)| !matches!(arch, Arch::Other))
+        .map(|(version, _)| version.clone())
+        .collect()
+}
 
 impl Display for Version {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -57,8 +66,8 @@ pub static ALL_PLATFORMS: &[Platform] = &[
     Platform::Linux32,
     Platform::Linux64,
     Platform::Mac,
-    Platform::MacArm64,
-    Platform::MacX64,
+    //Platform::MacArm64,
+    //Platform::MacX64,
     Platform::Win32,
     Platform::Win64,
 ];
@@ -133,6 +142,24 @@ pub struct Stable {
 pub enum Item {
     VersionDiff(VersionDiff),
     Stable(Stable),
+}
+
+impl Item {
+    pub fn to_string_raw(&self) -> &str {
+        match self {
+            Item::VersionDiff(v) => &v.from,
+            Item::Stable(s) => &s.stable,
+        }
+    }
+}
+
+impl Display for Item {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Item::VersionDiff(v) => write!(f, "{}", v.from),
+            Item::Stable(s) => write!(f, "{} (stable)", s.stable),
+        }
+    }
 }
 
 impl PartialOrd for Item {

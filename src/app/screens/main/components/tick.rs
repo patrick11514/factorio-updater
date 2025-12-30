@@ -1,10 +1,12 @@
 use std::sync::Arc;
 
 use ratatui::text::Line;
-use reqwest::Version;
 
 use crate::app::{
-    api::Response,
+    api::{
+        Response,
+        structs::{Item, Platform, Version},
+    },
     components::popup::PopupBuilder,
     screens::{
         ScreenEvent,
@@ -17,11 +19,28 @@ pub enum VersionCreateStep {
     #[default]
     SelectingPlatform,
     SelectingVersion {
-        platform: usize,
+        platform: Platform,
+    },
+    SelectingPatch {
+        platform: Platform,
+        version: Version,
     },
     SelectingPath {
-        platform: usize,
-        version: usize,
+        platform: Platform,
+        version: Version,
+        patch: Item,
+    },
+    FolderNotEmpty {
+        platform: Platform,
+        version: Version,
+        patch: Item,
+        install_path: String,
+    },
+    Summary {
+        platform: Platform,
+        version: Version,
+        patch: Item,
+        install_path: String,
     },
 }
 
@@ -112,6 +131,10 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
             MainMessage::VersionDetails(items, state) => {
                 main.installed_version_details = items;
                 state.lock().unwrap().finish();
+            }
+            MainMessage::OpenPopup((opened_popup, popup)) => {
+                main.opened_popup = Some(opened_popup);
+                return Some(ScreenEvent::OpenPopup(popup));
             }
         }
     }

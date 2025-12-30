@@ -2,8 +2,14 @@ use std::sync::{Arc, Mutex};
 
 use crate::app::{
     api::{ApiError, Response, structs::Updates},
-    components::log::{Log, LogState},
-    screens::main::components::run::{InstalledVersionDetails, RunState},
+    components::{
+        log::{Log, LogState},
+        popup::Popup,
+    },
+    screens::main::components::{
+        run::{InstalledVersionDetails, RunState},
+        tick::OpenedPopup,
+    },
 };
 
 type State = Arc<Mutex<LogState>>;
@@ -14,4 +20,5 @@ pub enum MainMessage {
     LoadVersions(Result<Response<Updates>, ApiError>, State),
     ChangeRunState(RunState),
     VersionDetails(Vec<InstalledVersionDetails>, State),
+    OpenPopup((OpenedPopup, Popup<'static>)),
 }

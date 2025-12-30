@@ -45,8 +45,8 @@ impl Selected {
 
 pub struct Login {
     selected: Selected,
-    username: Input,
-    token: Input,
+    username: Input<'static>,
+    token: Input<'static>,
 }
 
 impl Default for Login {
