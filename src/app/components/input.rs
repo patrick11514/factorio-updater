@@ -1,49 +1,55 @@
 #![allow(dead_code)]
 
 use crossterm::event::{Event, KeyEvent};
+use derive_builder::Builder;
 use ratatui::{
     style::{Color, Style},
     widgets::{Block, Paragraph},
 };
 use tui_input::{Input as NativeInput, backend::crossterm::EventHandler};
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone)]
 pub enum InputType {
     #[default]
     Text,
     Password,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug, Clone, Builder)]
+#[builder(setter(into))]
 pub struct Input {
     native_input: NativeInput,
+    #[builder(setter(strip_option))]
     error: Option<String>,
     selected_style: Style,
     unselected_style: Style,
     input_type: InputType,
+    #[builder(default, setter(strip_option))]
     title: Option<String>,
+    #[builder(default, setter(custom))]
     selected: bool,
 }
 
+impl InputBuilder {
+    pub fn password() -> Self {
+        let mut builder = Self::default();
+        builder.input_type(InputType::Password);
+        builder
+    }
+
+    pub fn selected(&mut self) -> &mut Self {
+        self.selected = Some(true);
+        self
+    }
+
+    pub fn with_value<T: Into<String>>(&mut self, value: T) -> &mut Self {
+        let val = value.into();
+        self.native_input = Some(NativeInput::default().with_value(val));
+        self
+    }
+}
+
 impl Input {
-    fn create_input(input_type: InputType) -> InputBuilder {
-        InputBuilder {
-            selected_style: Style::default().fg(ratatui::style::Color::Blue),
-            unselected_style: Style::default(),
-            input_type,
-            title: None,
-            selected: false,
-        }
-    }
-
-    pub fn new() -> InputBuilder {
-        Self::create_input(InputType::Text)
-    }
-
-    pub fn password() -> InputBuilder {
-        Self::create_input(InputType::Password)
-    }
-
     pub fn set_selected(&mut self, selected: bool) {
         self.selected = selected;
     }
@@ -87,47 +93,5 @@ impl Input {
 
     pub fn value(&self) -> &str {
         self.native_input.value()
-    }
-}
-
-pub struct InputBuilder {
-    title: Option<String>,
-    selected_style: Style,
-    unselected_style: Style,
-    input_type: InputType,
-    selected: bool,
-}
-
-impl InputBuilder {
-    pub fn title<T: Into<String>>(mut self, title: T) -> Self {
-        self.title = Some(title.into());
-        self
-    }
-
-    pub fn selected_style(mut self, style: Style) -> Self {
-        self.selected_style = style;
-        self
-    }
-
-    pub fn style(mut self, style: Style) -> Self {
-        self.unselected_style = style;
-        self
-    }
-
-    pub fn selected(mut self) -> Self {
-        self.selected = true;
-        self
-    }
-
-    pub fn build(self) -> Input {
-        Input {
-            native_input: NativeInput::default(),
-            error: None,
-            selected_style: self.selected_style,
-            unselected_style: self.unselected_style,
-            input_type: self.input_type,
-            title: self.title,
-            selected: self.selected,
-        }
     }
 }

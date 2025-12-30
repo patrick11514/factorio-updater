@@ -1,3 +1,5 @@
+use std::env;
+
 use crossterm::event::{KeyCode, KeyEvent};
 use derive_builder::Builder;
 use ratatui::{
@@ -11,6 +13,8 @@ use ratatui::{
     },
 };
 
+use crate::app::components::input::{Input, InputBuilder};
+
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum PopupType {
     #[default]
@@ -18,9 +22,11 @@ pub enum PopupType {
     YesNo,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum PopupResult {
     Ok,
+    OkSelect(usize),
+    OkInput(String),
     Yes,
     No,
 }
@@ -35,6 +41,7 @@ pub enum PopupContent {
         Vec<Line<'static>>,
         Option<Paragraph<'static>>,
     ),
+    Input(Input),
 }
 
 impl Default for PopupContent {
@@ -127,11 +134,46 @@ impl PopupBuilder<'_> {
         builder.content(line);
         builder
     }
+
+    pub fn input<I: Into<String>>(input: I) -> Self {
+        let mut builder = Self::default();
+
+        let input = InputBuilder::default()
+            .selected()
+            .with_value(input)
+            .build()
+            .unwrap();
+
+        builder.content(PopupContent::Input(input));
+        builder
+    }
+
+    pub fn input_title<T: Into<String>>(title: T, input: T) -> Self {
+        let mut builder = Self::default();
+
+        let input = InputBuilder::default()
+            .title(title)
+            .selected()
+            .with_value(input)
+            .build()
+            .unwrap();
+
+        builder.content(PopupContent::Input(input));
+        builder
+    }
 }
 
 impl Popup<'_> {
     pub fn handle_key(&mut self, ev: &KeyEvent) -> Option<PopupResult> {
         match ev.code {
+            KeyCode::Enter if self.popup_type == PopupType::Ok && self.is_select() => {
+                if let PopupContent::Select(state, _, _, _) = &self.content {
+                    if let Some(idx) = state.selected() {
+                        return Some(PopupResult::OkSelect(idx));
+                    }
+                }
+                None
+            }
             KeyCode::Enter if self.popup_type == PopupType::Ok => Some(PopupResult::Ok),
             KeyCode::Char('y') if self.popup_type == PopupType::YesNo => Some(PopupResult::Yes),
             KeyCode::Char('n') if self.popup_type == PopupType::YesNo => Some(PopupResult::No),
@@ -160,6 +202,10 @@ impl Popup<'_> {
             }
         }
     }
+
+    fn is_select(&self) -> bool {
+        matches!(self.content, PopupContent::Select(_, _, _, _))
+    }
 }
 
 impl Widget for &mut Popup<'_> {
@@ -185,12 +231,12 @@ impl Widget for &mut Popup<'_> {
             .constraints(vec![Constraint::Fill(1), Constraint::Length(1)])
             .split(inner);
 
-        match &self.content {
+        match &mut self.content {
             PopupContent::Text(line) => Paragraph::new(line.clone())
                 .centered()
                 .wrap(Wrap { trim: true })
                 .render(layout[0], buf),
-            PopupContent::Paragraph(paragraph) => paragraph.render(layout[0], buf),
+            PopupContent::Paragraph(paragraph) => paragraph.clone().render(layout[0], buf),
             PopupContent::Select(list_state, scrollbar_state, lines, paragraph) => {
                 let area = match paragraph {
                     Some(paragraph) => {
@@ -201,7 +247,7 @@ impl Widget for &mut Popup<'_> {
                                 Constraint::Max(lines.len() as u16),
                             ])
                             .split(layout[0]);
-                        paragraph.render(layout[0], buf);
+                        paragraph.clone().render(layout[0], buf);
                         layout[1]
                     }
                     None => layout[0],
@@ -227,6 +273,10 @@ impl Widget for &mut Popup<'_> {
                     .thumb_symbol("█");
 
                 StatefulWidget::render(scrollbar, area, buf, &mut scrollbar_state.clone());
+            }
+            PopupContent::Input(input) => {
+                let paragraph = input.render();
+                paragraph.render(layout[0], buf);
             }
         }
 

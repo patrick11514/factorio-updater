@@ -15,9 +15,14 @@ use crate::app::{
 #[derive(Debug, Default, Clone)]
 pub enum VersionCreateStep {
     #[default]
-    SelectingArch,
-    SelectingVersion,
-    SelectingPath,
+    SelectingPlatform,
+    SelectingVersion {
+        platform: usize,
+    },
+    SelectingPath {
+        platform: usize,
+        version: usize,
+    },
 }
 
 #[derive(Debug, Clone)]

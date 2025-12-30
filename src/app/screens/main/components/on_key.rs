@@ -7,16 +7,19 @@ use ratatui::{
 
 use crate::app::{
     api::structs::ALL_PLATFORMS,
-    components::popup::{PopupBuilder, PopupContent, PopupControl, PopupSize},
+    components::popup::{PopupBuilder, PopupContent, PopupControl},
     screens::{
         ScreenEvent,
-        main::{components::tick::OpenedPopup, screen::Main},
+        main::{
+            components::{popup_templates::install_popup, tick::OpenedPopup},
+            screen::Main,
+        },
     },
 };
 
 pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
     match ev.code {
-        KeyCode::Char('a') => {
+        KeyCode::Char('a') if main.opened_popup.is_none() => {
             main.opened_popup = Some(OpenedPopup::VersionCreate(Default::default()));
 
             let lines = ALL_PLATFORMS
@@ -31,13 +34,11 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
 
             let content: PopupContent = (lines, paragraph).into();
 
+            let mut builder = PopupBuilder::default();
+            install_popup(&mut builder);
+
             Some(ScreenEvent::OpenPopup(
-                PopupBuilder::default()
-                    .title(Line::from("Version installation").centered())
-                    .content(content)
-                    .size(PopupSize::Medium)
-                    .build()
-                    .unwrap(),
+                builder.content(content).build().unwrap(),
             ))
         }
         KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('k') => {

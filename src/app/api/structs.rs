@@ -117,22 +117,46 @@ impl From<(&Version, &Platform)> for Arch {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct VersionDiff {
     pub from: String,
     pub to: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 pub struct Stable {
     pub stable: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Clone)]
 #[serde(untagged)]
 pub enum Item {
     VersionDiff(VersionDiff),
     Stable(Stable),
+}
+
+impl PartialOrd for Item {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        let self_version = semver::Version::parse(match self {
+            Item::VersionDiff(v) => &v.from,
+            Item::Stable(s) => &s.stable,
+        })
+        .unwrap();
+
+        let other_version = semver::Version::parse(match other {
+            Item::VersionDiff(v) => &v.from,
+            Item::Stable(s) => &s.stable,
+        })
+        .unwrap();
+
+        Some(self_version.cmp(&other_version))
+    }
+}
+
+impl Ord for Item {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.partial_cmp(other).unwrap()
+    }
 }
 
 pub type Updates = HashMap<Arch, Vec<Item>>;

@@ -9,7 +9,10 @@ use ratatui::{
 
 use crate::app::{
     api::Api,
-    components::{input::Input, popup::PopupResult},
+    components::{
+        input::{Input, InputBuilder},
+        popup::PopupResult,
+    },
     config::Config,
     screens::{ConstaintDirection, ConstrainExtend, Screen, ScreenEvent},
 };
@@ -50,8 +53,12 @@ impl Default for Login {
     fn default() -> Self {
         Self {
             selected: Default::default(),
-            username: Input::new().selected().title("Username").build(),
-            token: Input::password().title("Token").build(),
+            username: InputBuilder::default()
+                .selected()
+                .title("Username")
+                .build()
+                .unwrap(),
+            token: InputBuilder::password().title("Token").build().unwrap(),
         }
     }
 }
