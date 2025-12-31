@@ -1,5 +1,3 @@
-use semver::Op;
-
 use crate::app::{
     components::popup::PopupResult,
     screens::{
@@ -32,10 +30,14 @@ pub async fn on_popup(main: &mut Main, res: PopupResult) -> Option<ScreenEvent> 
             (PopupResult::Yes, OpenedPopup::VersionCreate(state)) => {
                 VersionInstall::question(main, state).await
             }
-            (PopupResult::No, OpenedPopup::VersionCreate(_)) => {
+            (PopupResult::No, OpenedPopup::VersionCreate(_))
+            | (PopupResult::No, OpenedPopup::VersionUpdate(_)) => {
                 main.opened_popup = None;
                 Some(ScreenEvent::ClosePopup)
             }
+            /*(PopupResult::Yes, OpenedPopup::VersionUpdate(idx)) => {
+                VersionInstall::update(main).await
+            }*/
             _ => None,
         }
     } else {

@@ -1,9 +1,11 @@
+use std::collections::HashMap;
+
 use ratatui::{
     Frame,
     layout::{self, Rect},
     style::Modifier,
     text::Span,
-    widgets::{Block, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
+    widgets::{Block, ListState, Scrollbar, ScrollbarState, Wrap},
 };
 
 use crate::app::{
@@ -58,7 +60,7 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
     render_installed_versions(
         frame,
         main_layout[0],
-        installed_versions,
+        &Main::get_installed_versions(&main.api.config.installed_versions),
         &main.installed_version_details,
         &mut main.version_list_state,
         &mut main.version_scrollbar_state,
@@ -68,9 +70,9 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
         frame,
         main_layout[1],
         main.selected_version
-            .and_then(|idx| installed_versions.get(idx)),
+            .and_then(|idx| installed_versions.get(&idx)),
         main.selected_version
-            .and_then(|idx| main.installed_version_details.get(idx)),
+            .and_then(|idx| main.installed_version_details.get(&idx)),
     );
 
     render_logs(
@@ -100,8 +102,8 @@ fn render_title(config: &Config, frame: &mut Frame, area: Rect) {
 fn render_installed_versions(
     frame: &mut Frame,
     area: Rect,
-    installed: &Vec<InstalledVersion>,
-    details: &Vec<InstalledVersionDetails>,
+    installed: &Vec<(&uuid::Uuid, &InstalledVersion)>,
+    details: &HashMap<uuid::Uuid, InstalledVersionDetails>,
     list_state: &mut ListState,
     scrollbar_state: &mut ScrollbarState,
     selected: bool,
@@ -137,8 +139,8 @@ fn render_installed_versions(
         return;
     }
 
-    let items = installed.iter().enumerate().map(|(idx, version)| {
-        let detail = details.get(idx);
+    let items = installed.iter().map(|(uuid, version)| {
+        let detail = details.get(uuid);
 
         let state = detail.map(|d| &d.state);
 
@@ -150,6 +152,9 @@ fn render_installed_versions(
                 }
                 Some(InstalledVersionState::UpdateAvailable(_)) => {
                     Span::styled(" ▲ ", Style::default().fg(Color::Blue))
+                }
+                Some(InstalledVersionState::Updating) => {
+                    Span::styled(" ⟳ ", Style::default().fg(Color::Magenta))
                 }
             },
             Span::styled("Factorio ", Style::default().fg(ORANGE).bold()), // Standard Orange
@@ -314,6 +319,12 @@ fn render_more_info(
                             }
                         }
                     }
+                }
+                InstalledVersionState::Updating => {
+                    lines.push(Line::from(vec![
+                        Span::styled("Status: ", label_style),
+                        Span::styled("⟳ Updating", Style::default().fg(Color::Magenta)),
+                    ]));
                 }
             }
         }

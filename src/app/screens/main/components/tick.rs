@@ -49,6 +49,7 @@ pub enum OpenedPopup {
     LogoutNotify,
     ErrorNotify,
     VersionCreate(VersionCreateStep),
+    VersionUpdate(uuid::Uuid),
 }
 
 pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
@@ -148,7 +149,10 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 return Some(ScreenEvent::OpenPopup(popup));
             }
             MainMessage::VersionInstalled(installed_version) => {
-                main.api.config.installed_versions.push(installed_version);
+                main.api
+                    .config
+                    .installed_versions
+                    .insert(uuid::Uuid::new_v4(), installed_version);
                 let config = main.api.config.clone();
                 tokio::spawn(async move {
                     let _ = config.save().await;

@@ -6,3 +6,5 @@
 /win64
 /linux-server
 debug.log
+# Ignore installed versions data
+/versions 

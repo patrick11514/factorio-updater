@@ -1,4 +1,7 @@
-use std::sync::{Arc, Mutex};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 
 use crate::app::{
     api::{ApiError, Response, structs::Updates},
@@ -20,7 +23,7 @@ pub enum MainMessage {
     CheckLogin(Result<Option<()>, ApiError>, State),
     LoadVersions(Result<Response<Updates>, ApiError>, State),
     ChangeRunState(RunState),
-    VersionDetails(Vec<InstalledVersionDetails>, State),
+    VersionDetails(HashMap<uuid::Uuid, InstalledVersionDetails>, State),
     OpenPopup((OpenedPopup, Popup<'static>)),
     VersionInstalled(InstalledVersion),
 }

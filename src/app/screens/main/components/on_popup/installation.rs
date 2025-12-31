@@ -12,7 +12,6 @@ use crate::app::{
     },
     components::{
         input::InputBuilder,
-        log::LogBuilder,
         popup::{PopupBuilder, PopupContent, PopupControl, PopupSize, PopupType},
     },
     screens::{
@@ -22,12 +21,11 @@ use crate::app::{
                 popup_templates::install_popup,
                 tick::{OpenedPopup, VersionCreateStep},
             },
-            message::MainMessage,
             screen::Main,
         },
     },
     utils::{ORANGE, get_sorted_updates},
-    workflows::full_version::install_full_version,
+    workflows::install_full_version,
 };
 
 pub struct VersionInstall {}
@@ -263,5 +261,10 @@ impl VersionInstall {
             }
             _ => None,
         }
+    }
+
+    pub async fn update(main: &mut Main, idx: usize) -> Option<ScreenEvent> {
+        //TODO
+        None
     }
 }

@@ -1,3 +1,5 @@
+use std::{collections::HashMap, default};
+
 use async_trait::async_trait;
 use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::{
@@ -15,6 +17,7 @@ use crate::app::{
     },
     config::Config,
     screens::{ConstaintDirection, ConstrainExtend, Screen, ScreenEvent},
+    utils::ORANGE,
 };
 
 #[derive(Default, PartialEq)]
@@ -49,16 +52,27 @@ pub struct Login {
     token: Input<'static>,
 }
 
+fn default_input_style(mut builder: InputBuilder<'static>) -> InputBuilder<'static> {
+    builder
+        .selected_style(Style::default().fg(ORANGE))
+        .unselected_style(Style::default());
+
+    builder
+}
+
 impl Default for Login {
     fn default() -> Self {
         Self {
             selected: Default::default(),
-            username: InputBuilder::default()
+            username: default_input_style(InputBuilder::default())
                 .selected()
                 .title("Username")
                 .build()
                 .unwrap(),
-            token: InputBuilder::password().title("Token").build().unwrap(),
+            token: default_input_style(InputBuilder::password())
+                .title("Token")
+                .build()
+                .unwrap(),
         }
     }
 }
@@ -104,7 +118,7 @@ impl Login {
         let config = Config {
             username: self.username.value().to_string(),
             token: self.token.value().to_string(),
-            installed_versions: Vec::new(),
+            installed_versions: HashMap::new(),
         };
 
         config.save().await.unwrap();

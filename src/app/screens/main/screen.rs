@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, hash::Hash, sync::Arc};
 
 use async_trait::async_trait;
 use crossterm::event::KeyEvent;
@@ -8,6 +8,7 @@ use tokio::{sync::mpsc, task::JoinHandle};
 use crate::app::{
     api::{Api, structs::Updates},
     components::{log::Log, popup::PopupResult},
+    config::InstalledVersion,
     screens::{
         Screen, ScreenEvent,
         main::{
@@ -45,9 +46,9 @@ pub struct Main {
     pub(crate) run_state: RunState,
 
     pub(crate) updates: Option<Arc<Updates>>,
-    pub(crate) installed_version_details: Vec<InstalledVersionDetails>,
+    pub(crate) installed_version_details: HashMap<uuid::Uuid, InstalledVersionDetails>,
 
-    pub(crate) selected_version: Option<usize>,
+    pub(crate) selected_version: Option<uuid::Uuid>,
     pub(crate) selected_log: Option<usize>,
 
     pub(crate) selected_list: SelectedList,
@@ -68,7 +69,7 @@ impl Main {
         let mut version_scrollbar_state = ScrollbarState::default();
 
         if !api.config.installed_versions.is_empty() {
-            selected_version = Some(0);
+            selected_version = Some(api.config.installed_versions.keys().next().unwrap().clone());
 
             version_list_state.select(Some(0));
             version_scrollbar_state =
@@ -85,7 +86,7 @@ impl Main {
             selected_version,
             selected_log: None,
             run_state: Default::default(),
-            installed_version_details: Vec::new(),
+            installed_version_details: HashMap::new(),
             updates: None,
             version_list_state,
             version_scrollbar_state,
@@ -93,6 +94,15 @@ impl Main {
             logs_list_state: ListState::default(),
             logs_scrollbar_state: ScrollbarState::default(),
         }
+    }
+
+    pub fn get_installed_versions(
+        versions: &HashMap<uuid::Uuid, InstalledVersion>,
+    ) -> Vec<(&uuid::Uuid, &InstalledVersion)> {
+        let mut versions: Vec<(&uuid::Uuid, &InstalledVersion)> = versions.iter().collect();
+
+        versions.sort_by_key(|v| v.1.installed_at);
+        versions
     }
 }
 

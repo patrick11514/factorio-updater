@@ -8,8 +8,8 @@ use ratatui::{
     style::{self, Style},
     text::{Line, Text},
     widgets::{
-        Block, BorderType, Borders, Clear, List, ListState, Paragraph, Scrollbar,
-        ScrollbarOrientation, ScrollbarState, StatefulWidget, Widget, Wrap,
+        Block, BorderType, Borders, Clear, List, ListState, Paragraph, Scrollbar, ScrollbarState,
+        StatefulWidget, Widget, Wrap,
     },
 };
 

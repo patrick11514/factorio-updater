@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, fmt::Display, sync::Arc};
 
 use tokio::sync::mpsc::Sender;
 
@@ -76,9 +76,19 @@ pub enum UpdateType {
     Patch(Vec<VersionDiff>),
 }
 
+impl Display for UpdateType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            UpdateType::FullGame(version) => write!(f, "Full Game to version {}", version),
+            UpdateType::Patch(diffs) => write!(f, "Patch with {} updates", diffs.len()),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum InstalledVersionState {
     UpToDate,
+    Updating,
     UpdateAvailable(UpdateType),
 }
 
@@ -89,7 +99,7 @@ pub struct InstalledVersionDetails {
 
 pub async fn check_for_updates(
     updates: Arc<Updates>,
-    installed_versions: &Vec<InstalledVersion>,
+    installed_versions: &HashMap<uuid::Uuid, InstalledVersion>,
     tx: &Sender<MainMessage>,
 ) -> Option<RunState> {
     let log = LogBuilder::text("Checking for updates...")
@@ -101,8 +111,8 @@ pub async fn check_for_updates(
     let _ = tx.send(MainMessage::CreateLog(log)).await;
 
     let version_details = installed_versions
-        .into_iter()
-        .map(|iv| {
+        .iter()
+        .map(|(uuid, iv)| {
             let arch: Arch = (&iv.version, &iv.platform).into();
             let arch_updates = updates.get(&arch).unwrap();
 
@@ -158,7 +168,7 @@ pub async fn check_for_updates(
                 InstalledVersionState::UpdateAvailable(update_type)
             };
 
-            InstalledVersionDetails { state }
+            (uuid.clone(), InstalledVersionDetails { state })
         })
         .collect();
 

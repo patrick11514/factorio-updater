@@ -1,6 +1,9 @@
 #![allow(dead_code)]
 
-use std::path::{Path, PathBuf};
+use std::{
+    collections::HashMap,
+    path::{Path, PathBuf},
+};
 
 use crate::app::api::structs::{Platform, Version};
 use serde::{Deserialize, Serialize};
@@ -12,13 +15,14 @@ pub struct InstalledVersion {
     pub platform: Platform,
     pub current_version: String,
     pub path: PathBuf,
+    pub installed_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Config {
     pub username: String,
     pub token: String,
-    pub installed_versions: Vec<InstalledVersion>,
+    pub installed_versions: HashMap<uuid::Uuid, InstalledVersion>,
 }
 
 #[derive(Debug)]
@@ -37,7 +41,7 @@ impl Config {
         Self {
             username,
             token,
-            installed_versions: Vec::new(),
+            installed_versions: HashMap::new(),
         }
     }
 

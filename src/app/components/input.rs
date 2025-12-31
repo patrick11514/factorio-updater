@@ -5,7 +5,7 @@ use derive_builder::Builder;
 use ratatui::{
     style::{Color, Style},
     text::Line,
-    widgets::{Block, Paragraph, TitlePosition, Wrap},
+    widgets::{Block, Paragraph, Wrap},
 };
 use tui_input::{Input as NativeInput, backend::crossterm::EventHandler};
 
@@ -20,6 +20,7 @@ pub enum InputType {
 #[derive(Default, Debug, Clone, Builder)]
 #[builder(setter(into))]
 pub struct Input<'a> {
+    #[builder(default)]
     native_input: NativeInput,
     #[builder(setter(strip_option), default)]
     error: Option<String>,

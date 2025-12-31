@@ -1,16 +1,15 @@
+use futures_util::StreamExt;
+use tar::Archive;
+use tokio::{io::AsyncWriteExt, sync::mpsc::Sender};
+use xz2::bufread::XzDecoder;
+use zip::read::root_dir_common_filter;
+
 use std::{
     fs::{self, File},
     io::BufReader,
     path::{Path, PathBuf},
     sync::atomic::Ordering,
 };
-
-use async_tempfile::TempFile;
-use futures_util::StreamExt;
-use tar::Archive;
-use tokio::{io::AsyncWriteExt, sync::mpsc::Sender};
-use xz2::bufread::XzDecoder;
-use zip::read::root_dir_common_filter;
 
 use crate::app::{
     api::{
@@ -21,68 +20,11 @@ use crate::app::{
         log::{LogBuilder, LogState},
         popup::PopupBuilder,
     },
-    config::InstalledVersion,
     screens::main::{components::tick::OpenedPopup, message::MainMessage},
 };
+use async_tempfile::TempFile;
 
-pub async fn install_full_version(
-    tx: Sender<MainMessage>,
-    api: Api,
-    path: String,
-    platform: Platform,
-    version: Version,
-    patch: Item,
-) {
-    let main_log = LogBuilder::text(format!(
-        "Downloading Factorio{} v{} for {}...",
-        match &version {
-            Version::Vanilla => "",
-            Version::SpaceAge => " Space Age",
-            Version::Headless => " Headless",
-        },
-        patch.to_string(),
-        platform.to_string()
-    ))
-    .state(LogState::default())
-    .build()
-    .unwrap();
-    let main_state = main_log.state.clone();
-    let _ = tx.send(MainMessage::CreateLog(main_log)).await;
-
-    let res = match get_download_link(tx.clone(), &api, &version, &platform, &patch).await {
-        Some(res) => res,
-        None => {
-            return;
-        }
-    };
-
-    let file: TempFile = match download_archive(tx.clone(), res).await {
-        Some(file) => file,
-        None => {
-            return;
-        }
-    };
-
-    match extract(tx.clone(), file, &platform, &path).await {
-        Some(_) => {}
-        None => {
-            return;
-        }
-    }
-
-    main_state.lock().unwrap().finish();
-
-    let _ = tx
-        .send(MainMessage::VersionInstalled(InstalledVersion {
-            version: version,
-            platform: platform,
-            current_version: patch.to_string_raw().to_string(),
-            path: PathBuf::from(path),
-        }))
-        .await;
-}
-
-async fn get_download_link(
+pub async fn get_download_link(
     tx: Sender<MainMessage>,
     api: &Api,
     version: &Version,
@@ -132,7 +74,7 @@ async fn get_download_link(
     }
 }
 
-async fn download_archive(tx: Sender<MainMessage>, res: reqwest::Response) -> Option<TempFile> {
+pub async fn download_archive(tx: Sender<MainMessage>, res: reqwest::Response) -> Option<TempFile> {
     let log = LogBuilder::text("Downloading archive...")
         .state(LogState::default())
         .build()
@@ -226,7 +168,7 @@ async fn download_archive(tx: Sender<MainMessage>, res: reqwest::Response) -> Op
     Some(temp_file)
 }
 
-async fn extract(
+pub async fn extract(
     tx: Sender<MainMessage>,
     file: TempFile,
     platform: &Platform,
