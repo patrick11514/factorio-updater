@@ -4,7 +4,7 @@ use ratatui::{
     style::{Color, Style},
     symbols::merge::MergeStrategy,
     text::Line,
-    widgets::{Block, List, Scrollbar, ScrollbarOrientation},
+    widgets::{Block, List, ListDirection, Scrollbar, ScrollbarOrientation},
 };
 
 use crate::app::api::structs::{Arch, Item, Platform, Updates, Version};

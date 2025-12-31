@@ -4,13 +4,16 @@ TODO
 
 - [x] Add log window, with some basic log levels (info, warn, error)
 - [x] Add login screen with some inputs? And password input should show stars. And the nsave it to config file :) 
-- [ ] Add some sort of picker, to download some specific platform (linux, windows, macos of latest version) and then patch installed versions which is old
+- [x] Add some sort of picker, to download some specific platform (linux, windows, macos of latest version) and then patch installed versions which is old
 - [x] Add some progress bars etc.. :)
 - [ ] Add some only CLI mode, without TUI 
 
 
 TODO real :) :
-- [ ] Change log list to -> Vec<Arc<Mutex<Log>>> So we can modify the logs from other threads :)
+- [x] Change log list to -> Vec<Arc<Mutex<Log>>> So we can modify the logs from other threads :)
 - [x] On open, if config exists, try to download list of versions, and verify if the config is valid, otherwise open popup -> redirect to login screen
-- [ ] Selectable area -> I -> Installed versions L -> Logs -> make border colored, like focused (yellow)
-- [ ] Scrollable logs -> on focus arrow up + down
+- [x] Selectable area -> I -> Installed versions L -> Logs -> make border colored, like focused (yellow)
+- [x] Scrollable logs -> on focus arrow up + down
+- [ ] Display some symbol next to each version, like its Up to date/needs update
+- [ ] Add details
+- [ ] Perform patch updates/again full update if no patches to go stable exists

@@ -102,7 +102,7 @@ fn get_highest_duration(duration: Duration) -> String {
 }
 
 impl Log {
-    pub fn render(&mut self, area: &Rect) -> ListItem<'static> {
+    pub fn render(&mut self, area: &Rect, selected: bool) -> ListItem<'static> {
         let mut state = self.state.lock().unwrap();
 
         let style = match *state {
@@ -135,7 +135,7 @@ impl Log {
                 let progress = progress.load(atomic::Ordering::Relaxed).min(100);
 
                 let bar_length = (area.width as usize)
-                    .saturating_sub(21 /* timestamp */ + 2 + state_symbol.content.len() /* symbol */ + 7 /* percentage*/);
+                    .saturating_sub(21 /* timestamp */ + 2 + state_symbol.content.len() /* symbol */ + 7 /* percentage*/ + if selected {2} else {0} /* select */);
                 let filled_length = (progress as usize * bar_length) / 100;
                 let bar = format!(
                     "[{}O{}] {}%",

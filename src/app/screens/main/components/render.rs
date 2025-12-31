@@ -1,7 +1,7 @@
 use ratatui::{
     Frame,
     layout::{self, Rect},
-    widgets::{Block, ListState, Scrollbar, ScrollbarState, Wrap},
+    widgets::{Block, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
 };
 
 use crate::app::{
@@ -175,7 +175,7 @@ fn render_more_info(frame: &mut Frame, area: Rect, version: Option<&InstalledVer
 fn render_logs(
     frame: &mut Frame,
     area: Rect,
-    logs: &mut Vec<Box<Log>>,
+    logs: &mut Vec<Log>,
     list_state: &mut ListState,
     scrollbar_state: &mut ScrollbarState,
     selected: bool,
@@ -191,7 +191,10 @@ fn render_logs(
         },
     );
 
-    let items = logs.iter_mut().rev().map(|log| log.render(&logs_container));
+    let items = logs
+        .iter_mut()
+        .rev()
+        .map(|log| log.render(&logs_container, selected));
 
     let logs = style_list(List::new(items).direction(ListDirection::BottomToTop));
     frame.render_stateful_widget(logs, logs_container, list_state);

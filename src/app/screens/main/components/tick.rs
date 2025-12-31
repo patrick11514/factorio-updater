@@ -85,7 +85,18 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 }
             },
             MainMessage::CreateLog(log) => {
-                main.logs.push(Box::new(log));
+                main.logs.push(log);
+
+                let len = main.logs.len();
+
+                if let None = main.selected_log {
+                    main.selected_log = Some(0);
+                }
+
+                main.logs_scrollbar_state = main
+                    .logs_scrollbar_state
+                    .content_length(len)
+                    .position(len - main.selected_log.unwrap());
             }
             MainMessage::LoadVersions(result, state) => match result {
                 Ok(response) => match response {

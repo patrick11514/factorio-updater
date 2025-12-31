@@ -36,7 +36,7 @@ pub enum SelectedList {
 pub struct Main {
     pub(crate) username: String,
     pub(crate) api: Api,
-    pub(crate) logs: Vec<Box<Log>>,
+    pub(crate) logs: Vec<Log>,
 
     pub(crate) rx: mpsc::Receiver<MainMessage>,
     pub(crate) tx: mpsc::Sender<MainMessage>,
@@ -44,9 +44,11 @@ pub struct Main {
     pub(crate) opened_popup: Option<OpenedPopup>,
     pub(crate) run_state: RunState,
 
-    pub(crate) selected_version: Option<usize>,
     pub(crate) updates: Option<Arc<Updates>>,
     pub(crate) installed_version_details: Vec<InstalledVersionDetails>,
+
+    pub(crate) selected_version: Option<usize>,
+    pub(crate) selected_log: Option<usize>,
 
     pub(crate) selected_list: SelectedList,
 
@@ -61,10 +63,13 @@ impl Main {
     pub fn new(api: Api) -> Self {
         let (tx, rx) = mpsc::channel(128);
 
+        let mut selected_version = None;
         let mut version_list_state = ListState::default();
         let mut version_scrollbar_state = ScrollbarState::default();
 
         if !api.config.installed_versions.is_empty() {
+            selected_version = Some(0);
+
             version_list_state.select(Some(0));
             version_scrollbar_state =
                 version_scrollbar_state.content_length(api.config.installed_versions.len());
@@ -77,7 +82,8 @@ impl Main {
             rx,
             tx,
             opened_popup: None,
-            selected_version: None,
+            selected_version,
+            selected_log: None,
             run_state: Default::default(),
             installed_version_details: Vec::new(),
             updates: None,
