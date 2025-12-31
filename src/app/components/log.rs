@@ -5,6 +5,7 @@ use std::sync::{
     atomic::{self, AtomicU8},
 };
 
+use chrono::Duration;
 use derive_builder::Builder;
 use ratatui::{
     layout::Rect,
@@ -88,6 +89,18 @@ impl LogBuilder {
     }
 }
 
+fn get_highest_duration(duration: Duration) -> String {
+    if duration.num_hours() > 0 {
+        format!("{}h", duration.num_hours())
+    } else if duration.num_minutes() > 0 {
+        format!("{}m", duration.num_minutes())
+    } else if duration.num_seconds() > 0 {
+        format!("{}s", duration.num_seconds())
+    } else {
+        format!("{}ms", duration.num_milliseconds())
+    }
+}
+
 impl Log {
     pub fn render(&mut self, area: &Rect) -> ListItem<'static> {
         let mut state = self.state.lock().unwrap();
@@ -100,8 +113,8 @@ impl Log {
 
         let state_symbol = Span::styled(
             match *state {
-                LogState::Finished(dur) => format!("✓ ({}ms)", dur.num_milliseconds()),
-                LogState::Errored(dur) => format!("✗ ({}ms)", dur.num_milliseconds()),
+                LogState::Finished(dur) => format!("✓ ({})", get_highest_duration(dur)),
+                LogState::Errored(dur) => format!("✗ ({})", get_highest_duration(dur)),
                 LogState::InProgress {
                     ref mut prev_char_idx,
                     ..
@@ -157,13 +170,11 @@ impl Log {
         ListItem::new(content)
     }
 
-    pub fn set_progresss(&self, amount: u8) {
+    pub fn get_progress(&self) -> Arc<AtomicU8> {
         if let LogType::Progress(ref progress) = self.log_type {
-            progress
-                .fetch_update(atomic::Ordering::Relaxed, atomic::Ordering::Relaxed, |_| {
-                    Some(amount.min(100))
-                })
-                .unwrap();
+            progress.clone()
+        } else {
+            Arc::new(AtomicU8::new(0))
         }
     }
 }

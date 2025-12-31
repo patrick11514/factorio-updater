@@ -47,7 +47,7 @@ impl App<'_> {
             exited: false,
             screen: match config {
                 Some(config) => Box::new(Main::new(Api::new(config))),
-                None => Box::new(Login::default()),
+                None => Box::new(Login::default()) as Box<dyn Screen>,
             },
             popup: None,
             event_rx: rx,

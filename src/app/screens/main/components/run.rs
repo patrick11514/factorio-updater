@@ -29,7 +29,7 @@ pub async fn check_credentials(api: &Api, tx: &Sender<MainMessage>) -> Option<Ru
         .unwrap();
 
     let state = log.state.clone();
-    let _ = tx.send(MainMessage::CreateLog(log));
+    let _ = tx.send(MainMessage::CreateLog(log)).await;
 
     match api.check_credentials().await {
         Ok(creds) => match creds {
@@ -56,7 +56,7 @@ pub async fn fetch_versions(api: &Api, tx: &Sender<MainMessage>) -> Option<RunSt
         .unwrap();
 
     let state = log.state.clone();
-    let _ = tx.send(MainMessage::CreateLog(log));
+    let _ = tx.send(MainMessage::CreateLog(log)).await;
 
     let result = api.get_patches().await;
 
@@ -98,7 +98,7 @@ pub async fn check_for_updates(
         .unwrap();
 
     let state = log.state.clone();
-    let _ = tx.send(MainMessage::CreateLog(log));
+    let _ = tx.send(MainMessage::CreateLog(log)).await;
 
     let version_details = installed_versions
         .into_iter()

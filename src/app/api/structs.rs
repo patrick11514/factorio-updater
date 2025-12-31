@@ -8,9 +8,11 @@ pub enum Version {
     Vanilla,
     #[serde(rename = "space-age")]
     SpaceAge,
+    #[serde(rename = "headless")]
+    Headless,
 }
 
-pub static ALL_VERSIONS: &[Version] = &[Version::Vanilla, Version::SpaceAge];
+pub static ALL_VERSIONS: &[Version] = &[Version::Vanilla, Version::SpaceAge, Version::Headless];
 
 pub fn get_versions_by_platform(platform: &Platform) -> Vec<Version> {
     ALL_VERSIONS
@@ -26,6 +28,7 @@ impl Display for Version {
         match self {
             Version::Vanilla => write!(f, "Vanilla"),
             Version::SpaceAge => write!(f, "Space Age"),
+            Version::Headless => write!(f, "Headless"),
         }
     }
 }
@@ -65,7 +68,7 @@ impl Display for Platform {
 pub static ALL_PLATFORMS: &[Platform] = &[
     Platform::Linux32,
     Platform::Linux64,
-    Platform::Mac,
+    //Platform::Mac, //contains the .dmg file
     //Platform::MacArm64,
     //Platform::MacX64,
     Platform::Win32,
@@ -121,6 +124,7 @@ impl From<(&Version, &Platform)> for Arch {
             (Version::SpaceAge, Platform::Linux64) => Arch::CoreExpansionLinux64,
             (Version::SpaceAge, Platform::Mac) => Arch::CoreExpansionMac,
             (Version::SpaceAge, Platform::Win64) => Arch::CoreExpansionWin64,
+            (Version::Headless, Platform::Linux64) => Arch::CoreLinuxHeadless64,
             _ => Arch::Other,
         }
     }

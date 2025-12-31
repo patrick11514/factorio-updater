@@ -258,6 +258,7 @@ impl VersionInstall {
                     install_full_version(tx, api, install_path, platform, version, patch).await
                 });
 
+                main.opened_popup = None;
                 Some(ScreenEvent::ClosePopup)
             }
             _ => None,
