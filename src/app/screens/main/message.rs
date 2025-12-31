@@ -26,4 +26,5 @@ pub enum MainMessage {
     VersionDetails(HashMap<uuid::Uuid, InstalledVersionDetails>, State),
     OpenPopup((OpenedPopup, Popup<'static>)),
     VersionInstalled(InstalledVersion),
+    VersionUpdated(uuid::Uuid, String),
 }

@@ -14,6 +14,7 @@ TODO real :) :
 - [x] On open, if config exists, try to download list of versions, and verify if the config is valid, otherwise open popup -> redirect to login screen
 - [x] Selectable area -> I -> Installed versions L -> Logs -> make border colored, like focused (yellow)
 - [x] Scrollable logs -> on focus arrow up + down
-- [ ] Display some symbol next to each version, like its Up to date/needs update
-- [ ] Add details
+- [x] Display some symbol next to each version, like its Up to date/needs update
+- [x] Add details
 - [ ] Perform patch updates/again full update if no patches to go stable exists
+- [ ] Add some sort of deleting the installed versions (D key?)

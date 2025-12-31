@@ -9,7 +9,7 @@ use ratatui::{
 };
 
 use crate::app::{
-    api::structs::Version,
+    api::structs::{Platform, Version},
     components::log::Log,
     config::{Config, InstalledVersion},
     screens::main::{
@@ -269,15 +269,32 @@ fn render_more_info(
                     ]));
 
                     match update_type {
-                        UpdateType::FullGame(target_ver) => {
+                        UpdateType::FullGame(target) | UpdateType::FullGameUnsupported(target) => {
                             lines.push(Line::from(vec![
                                 Span::raw("  • Method: "),
                                 Span::styled("Full Game Download", Style::default().fg(Color::Red)),
                             ]));
                             lines.push(Line::from(vec![
                                 Span::raw("  • Target: "),
-                                Span::styled(target_ver, Style::default().fg(Color::Green).bold()),
+                                Span::styled(target, Style::default().fg(Color::Green).bold()),
                             ]));
+                            if let UpdateType::FullGameUnsupported(_) = update_type {
+                                lines.push(Line::from(Span::styled(
+                                    "  • Note: We can't perform patch update on unsupported OSes.",
+                                    Style::default().fg(ORANGE).bold(),
+                                )));
+                                lines.push(Line::from(Span::styled(
+                                    "          This means, Linux version can only be patched on Linux, Windows on Windows, etc.",
+                                    Style::default().fg(ORANGE).bold(),
+                                )));
+                                lines.push(Line::from(Span::styled(
+                                    format!("          If you want to patch this version, run this updater on the supported OS: {}", match info.platform {
+                                        Platform::Linux32 | Platform::Linux64 => "Linux",
+                                        Platform::Mac |  Platform::MacArm64 | Platform::MacX64 => "MacOS",
+                                        Platform::Win32 |  Platform::Win64 => "Windows",
+                                    }),                                     Style::default().fg(ORANGE).bold()
+                                )));
+                            }
                         }
                         UpdateType::Patch(diffs) => {
                             let target_ver =

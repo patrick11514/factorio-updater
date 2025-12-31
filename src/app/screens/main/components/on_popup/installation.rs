@@ -19,13 +19,14 @@ use crate::app::{
         main::{
             components::{
                 popup_templates::install_popup,
+                run::InstalledVersionState,
                 tick::{OpenedPopup, VersionCreateStep},
             },
             screen::Main,
         },
     },
     utils::{ORANGE, get_sorted_updates},
-    workflows::install_full_version,
+    workflows::{install_full_version, install_update},
 };
 
 pub struct VersionInstall {}
@@ -263,8 +264,18 @@ impl VersionInstall {
         }
     }
 
-    pub async fn update(main: &mut Main, idx: usize) -> Option<ScreenEvent> {
-        //TODO
-        None
+    pub async fn update(main: &mut Main, idx: uuid::Uuid) -> Option<ScreenEvent> {
+        let tx = main.tx.clone();
+        let api = main.api.clone();
+        let data = api.config.installed_versions.get(&idx).unwrap().clone();
+        let details = main.installed_version_details.get_mut(&idx).unwrap();
+
+        if let InstalledVersionState::UpdateAvailable(update) = &details.state {
+            let update = update.clone();
+            tokio::spawn(async move { install_update(tx, api, idx, data, update).await });
+        }
+
+        details.state = InstalledVersionState::Updating;
+        Some(ScreenEvent::ClosePopup)
     }
 }

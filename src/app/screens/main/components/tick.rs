@@ -161,6 +161,19 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
 
                 return Some(ScreenEvent::RunInit);
             }
+            MainMessage::VersionUpdated(uuid, new_version) => {
+                if let Some(installed_version) = main.api.config.installed_versions.get_mut(&uuid) {
+                    installed_version.current_version = new_version;
+                }
+                let config = main.api.config.clone();
+                tokio::spawn(async move {
+                    let _ = config.save().await;
+                });
+
+                main.run_state = RunState::CheckForUpdates;
+
+                return Some(ScreenEvent::RunInit);
+            }
         }
     }
 

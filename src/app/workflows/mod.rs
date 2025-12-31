@@ -42,6 +42,7 @@ pub async fn install_full_version(
     let res = match get_download_link(tx.clone(), &api, &version, &platform, &patch).await {
         Some(res) => res,
         None => {
+            main_state.lock().unwrap().error();
             return;
         }
     };
@@ -49,6 +50,7 @@ pub async fn install_full_version(
     let file: TempFile = match download_archive(tx.clone(), res).await {
         Some(file) => file,
         None => {
+            main_state.lock().unwrap().error();
             return;
         }
     };
@@ -56,6 +58,7 @@ pub async fn install_full_version(
     match extract(tx.clone(), file, &platform, &path).await {
         Some(_) => {}
         None => {
+            main_state.lock().unwrap().error();
             return;
         }
     }
@@ -73,6 +76,57 @@ pub async fn install_full_version(
         .await;
 }
 
-pub async fn install_update(tx: Sender<MainMessage>, api: Api, update: UpdateType) {
-    //TODO
+pub async fn install_update(
+    tx: Sender<MainMessage>,
+    api: Api,
+    uuid: uuid::Uuid,
+    data: InstalledVersion,
+    update: UpdateType,
+) {
+    let target_version = match &update {
+        UpdateType::FullGame(stable) | UpdateType::FullGameUnsupported(stable) => {
+            stable.to_string()
+        }
+        UpdateType::Patch(diffs) => diffs.last().unwrap().to.to_string(),
+    };
+
+    let main_log = LogBuilder::text(format!(
+        "Updating Factorio{} {} from {} to {}...",
+        match &data.version {
+            Version::Vanilla => "",
+            Version::SpaceAge => " Space Age",
+            Version::Headless => " Headless",
+        },
+        data.platform.to_string(),
+        data.current_version,
+        target_version,
+    ))
+    .state(LogState::default())
+    .build()
+    .unwrap();
+    let main_state = main_log.state.clone();
+    let _ = tx.send(MainMessage::CreateLog(main_log)).await;
+
+    //if -> patch, try to download patches, otherwise we fallback to full download
+    if let UpdateType::Patch(version_diffs) = &update {
+        let log = LogBuilder::text("Downloading patches...")
+            .state(LogState::default())
+            .build()
+            .unwrap();
+        let state = log.state.clone();
+        let _ = tx.send(MainMessage::CreateLog(log)).await;
+
+        let log_progress = LogBuilder::progress(0)
+            .state(LogState::default())
+            .build()
+            .unwrap();
+        let progress_state = log_progress.state.clone();
+        //let progress_fac
+        let _ = tx.send(MainMessage::CreateLog(log_progress)).await;
+    }
+
+    main_state.lock().unwrap().finish();
+    let _ = tx
+        .send(MainMessage::VersionUpdated(uuid, target_version))
+        .await;
 }

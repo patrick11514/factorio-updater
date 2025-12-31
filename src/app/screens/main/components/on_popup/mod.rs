@@ -35,9 +35,9 @@ pub async fn on_popup(main: &mut Main, res: PopupResult) -> Option<ScreenEvent> 
                 main.opened_popup = None;
                 Some(ScreenEvent::ClosePopup)
             }
-            /*(PopupResult::Yes, OpenedPopup::VersionUpdate(idx)) => {
-                VersionInstall::update(main).await
-            }*/
+            (PopupResult::Yes, OpenedPopup::VersionUpdate(idx)) => {
+                VersionInstall::update(main, idx.clone()).await
+            }
             _ => None,
         }
     } else {

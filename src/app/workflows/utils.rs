@@ -278,3 +278,5 @@ fn extract_zip(archive: TempFile, target: PathBuf) -> Result<(), ExtractResult> 
 
     Ok(())
 }
+
+//pub async fn fetch_all_version

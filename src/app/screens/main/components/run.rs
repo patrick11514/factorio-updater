@@ -1,11 +1,11 @@
-use std::{collections::HashMap, fmt::Display, sync::Arc};
+use std::{collections::HashMap, env, fmt::Display, sync::Arc};
 
 use tokio::sync::mpsc::Sender;
 
 use crate::app::{
     api::{
         Api,
-        structs::{Arch, Item, Updates, VersionDiff},
+        structs::{Arch, Item, Platform, Updates, VersionDiff},
     },
     components::log::{LogBuilder, LogState},
     config::InstalledVersion,
@@ -73,6 +73,7 @@ pub async fn fetch_versions(api: &Api, tx: &Sender<MainMessage>) -> Option<RunSt
 #[derive(Debug, Clone)]
 pub enum UpdateType {
     FullGame(String),
+    FullGameUnsupported(String),
     Patch(Vec<VersionDiff>),
 }
 
@@ -81,6 +82,9 @@ impl Display for UpdateType {
         match self {
             UpdateType::FullGame(version) => write!(f, "Full Game to version {}", version),
             UpdateType::Patch(diffs) => write!(f, "Patch with {} updates", diffs.len()),
+            UpdateType::FullGameUnsupported(version) => {
+                write!(f, "Full Game to version {} (unsupported OS)", version)
+            }
         }
     }
 }
@@ -133,34 +137,47 @@ pub async fn check_for_updates(
             {
                 InstalledVersionState::UpToDate
             } else {
+                //Check os compatibility
+
+                let is_supported_os = match (env::consts::OS, &iv.platform) {
+                    ("linux", Platform::Linux64 | Platform::Linux32) => true,
+                    ("windows", Platform::Win64 | Platform::Win32) => true,
+                    ("macos", Platform::Mac | Platform::MacArm64 | Platform::MacX64) => true,
+                    _ => false,
+                };
+
                 let mut collected_updates = Vec::new();
                 let mut to_walk = vec![&iv.current_version];
 
-                let update_type = loop {
-                    let version = if let Some(version) = to_walk.pop() {
-                        version
-                    } else {
-                        break UpdateType::FullGame(stable);
-                    };
-
-                    match arch_updates.iter().find(|item| match item {
-                        Item::VersionDiff(version_diff) => version_diff.from == *version,
-                        Item::Stable(stable) => stable.stable == *version,
-                    }) {
-                        Some(item) => match item {
-                            Item::VersionDiff(version_diff) => {
-                                //accumulate path for patching
-                                collected_updates.push(version_diff.clone());
-                                to_walk.push(&version_diff.to);
-                            }
-                            //we reached stable version, so stop here
-                            Item::Stable(_) => {
-                                break UpdateType::Patch(collected_updates);
-                            }
-                        },
-                        None => {
-                            //Somehow we can't find a diff
+                let update_type = if !is_supported_os {
+                    UpdateType::FullGameUnsupported(stable)
+                } else {
+                    loop {
+                        let version = if let Some(version) = to_walk.pop() {
+                            version
+                        } else {
                             break UpdateType::FullGame(stable);
+                        };
+
+                        match arch_updates.iter().find(|item| match item {
+                            Item::VersionDiff(version_diff) => version_diff.from == *version,
+                            Item::Stable(stable) => stable.stable == *version,
+                        }) {
+                            Some(item) => match item {
+                                Item::VersionDiff(version_diff) => {
+                                    //accumulate path for patching
+                                    collected_updates.push(version_diff.clone());
+                                    to_walk.push(&version_diff.to);
+                                }
+                                //we reached stable version, so stop here
+                                Item::Stable(_) => {
+                                    break UpdateType::Patch(collected_updates);
+                                }
+                            },
+                            None => {
+                                //Somehow we can't find a diff
+                                break UpdateType::FullGame(stable);
+                            }
                         }
                     }
                 };
