@@ -21,6 +21,7 @@ use crate::app::{
         log::{LogBuilder, LogState},
         popup::PopupBuilder,
     },
+    config::InstalledVersion,
     screens::main::{components::tick::OpenedPopup, message::MainMessage},
 };
 
@@ -48,14 +49,14 @@ pub async fn install_full_version(
     let main_state = main_log.state.clone();
     let _ = tx.send(MainMessage::CreateLog(main_log)).await;
 
-    let res = match get_download_link(tx.clone(), &api, &version, &platform, patch).await {
+    let res = match get_download_link(tx.clone(), &api, &version, &platform, &patch).await {
         Some(res) => res,
         None => {
             return;
         }
     };
 
-    let file = match download_archive(tx.clone(), res).await {
+    let file: TempFile = match download_archive(tx.clone(), res).await {
         Some(file) => file,
         None => {
             return;
@@ -70,6 +71,15 @@ pub async fn install_full_version(
     }
 
     main_state.lock().unwrap().finish();
+
+    let _ = tx
+        .send(MainMessage::VersionInstalled(InstalledVersion {
+            version: version,
+            platform: platform,
+            current_version: patch.to_string_raw().to_string(),
+            path: PathBuf::from(path),
+        }))
+        .await;
 }
 
 async fn get_download_link(
@@ -77,7 +87,7 @@ async fn get_download_link(
     api: &Api,
     version: &Version,
     platform: &Platform,
-    patch: Item,
+    patch: &Item,
 ) -> Option<reqwest::Response> {
     let log = LogBuilder::text("Getting download link...")
         .state(LogState::default())
@@ -303,7 +313,10 @@ fn extract_tar_xz(archive: TempFile, target: PathBuf) -> Result<(), ExtractResul
             Ok(p) => p.into_owned(),
             Err(_) => return Err(ExtractResult::FailedExtract),
         };
-        let full_path = target.join(path);
+
+        let stripped_path: PathBuf = path.components().skip(1).collect();
+
+        let full_path = target.join(stripped_path);
         if let Some(parent) = full_path.parent() {
             std::fs::create_dir_all(parent).map_err(|_| ExtractResult::FailedExtract)?;
         }

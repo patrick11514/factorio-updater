@@ -136,6 +136,16 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 main.opened_popup = Some(opened_popup);
                 return Some(ScreenEvent::OpenPopup(popup));
             }
+            MainMessage::VersionInstalled(installed_version) => {
+                main.api.config.installed_versions.push(installed_version);
+                let config = main.api.config.clone();
+                tokio::spawn(async move {
+                    let _ = config.save().await;
+                });
+                main.run_state = RunState::CheckForUpdates;
+
+                return Some(ScreenEvent::RunInit);
+            }
         }
     }
 

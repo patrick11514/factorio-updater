@@ -1,12 +1,15 @@
 use ratatui::{
     Frame,
     layout::{Constraint, Layout, Rect},
-    style::Color,
+    style::{Color, Style},
     symbols::merge::MergeStrategy,
     text::Line,
+    widgets::{Block, List, Scrollbar, ScrollbarOrientation},
 };
 
 use crate::app::api::structs::{Arch, Item, Platform, Updates, Version};
+
+pub(crate) mod installation;
 
 pub fn with_title(frame: &mut Frame, title: Line, area: Rect) -> Rect {
     let layout = Layout::default()
@@ -19,8 +22,10 @@ pub fn with_title(frame: &mut Frame, title: Line, area: Rect) -> Rect {
     layout[1]
 }
 
-pub fn border_with_title(frame: &mut Frame, title: Line, area: Rect) -> Rect {
-    let outer = ratatui::widgets::Block::bordered().merge_borders(MergeStrategy::Exact);
+pub fn border_with_title(frame: &mut Frame, title: Line, area: Rect, border_style: Style) -> Rect {
+    let outer = Block::bordered()
+        .border_style(border_style)
+        .merge_borders(MergeStrategy::Exact);
     let inner = outer.inner(area);
 
     frame.render_widget(outer, area);
@@ -36,3 +41,18 @@ pub fn get_sorted_updates(updates: &Updates, version: &Version, platform: &Platf
 }
 
 pub static ORANGE: Color = Color::Indexed(202);
+
+pub fn style_list(list: List) -> List {
+    list.block(Block::default())
+        .highlight_style(Style::default().fg(ORANGE).bold())
+        .highlight_symbol(">> ")
+}
+
+pub fn style_scrollbar(scrollbar: Scrollbar) -> Scrollbar {
+    scrollbar
+        .orientation(ScrollbarOrientation::VerticalRight)
+        .begin_symbol(Some("▴"))
+        .end_symbol(Some("▾"))
+        .track_symbol(Some("│"))
+        .thumb_symbol("█")
+}

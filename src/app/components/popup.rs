@@ -13,7 +13,10 @@ use ratatui::{
     },
 };
 
-use crate::app::components::input::{Input, InputBuilder};
+use crate::app::{
+    components::input::{Input, InputBuilder},
+    utils::{style_list, style_scrollbar},
+};
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub enum PopupType {
@@ -299,25 +302,15 @@ impl Widget for &mut Popup<'_> {
                     None => layout[0],
                 };
 
-                let list = List::new(
+                let list = style_list(List::new(
                     lines
                         .into_iter()
                         .map(|line| ratatui::widgets::ListItem::new(line.clone()))
                         .collect::<Vec<ratatui::widgets::ListItem>>(),
-                )
-                .block(Block::default())
-                .highlight_style(Style::default().fg(style::Color::Yellow).bold())
-                .highlight_symbol(">> ");
-
+                ));
                 StatefulWidget::render(list, area, buf, &mut list_state.clone());
 
-                let scrollbar = Scrollbar::default()
-                    .orientation(ScrollbarOrientation::VerticalRight)
-                    .begin_symbol(Some("▴"))
-                    .end_symbol(Some("▾"))
-                    .track_symbol(Some("│"))
-                    .thumb_symbol("█");
-
+                let scrollbar = style_scrollbar(Scrollbar::default());
                 StatefulWidget::render(scrollbar, area, buf, &mut scrollbar_state.clone());
             }
             PopupContent::Input(input) => {

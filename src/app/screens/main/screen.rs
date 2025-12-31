@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use async_trait::async_trait;
 use crossterm::event::KeyEvent;
-use ratatui::widgets::ListState;
+use ratatui::widgets::{ListState, ScrollbarState};
 use tokio::{sync::mpsc, task::JoinHandle};
 
 use crate::app::{
@@ -26,22 +26,49 @@ use crate::app::{
     },
 };
 
+#[derive(Debug, Clone, Default)]
+pub enum SelectedList {
+    #[default]
+    Versions,
+    Logs,
+}
+
 pub struct Main {
     pub(crate) username: String,
     pub(crate) api: Api,
     pub(crate) logs: Vec<Box<Log>>,
+
     pub(crate) rx: mpsc::Receiver<MainMessage>,
     pub(crate) tx: mpsc::Sender<MainMessage>,
+
     pub(crate) opened_popup: Option<OpenedPopup>,
-    pub(crate) selected_version: Option<usize>,
     pub(crate) run_state: RunState,
+
+    pub(crate) selected_version: Option<usize>,
     pub(crate) updates: Option<Arc<Updates>>,
     pub(crate) installed_version_details: Vec<InstalledVersionDetails>,
+
+    pub(crate) selected_list: SelectedList,
+
+    pub(crate) version_list_state: ListState,
+    pub(crate) version_scrollbar_state: ScrollbarState,
+
+    pub(crate) logs_list_state: ListState,
+    pub(crate) logs_scrollbar_state: ScrollbarState,
 }
 
 impl Main {
     pub fn new(api: Api) -> Self {
         let (tx, rx) = mpsc::channel(128);
+
+        let mut version_list_state = ListState::default();
+        let mut version_scrollbar_state = ScrollbarState::default();
+
+        if !api.config.installed_versions.is_empty() {
+            version_list_state.select(Some(0));
+            version_scrollbar_state =
+                version_scrollbar_state.content_length(api.config.installed_versions.len());
+        }
 
         Self {
             username: api.config.username.clone(),
@@ -54,6 +81,11 @@ impl Main {
             run_state: Default::default(),
             installed_version_details: Vec::new(),
             updates: None,
+            version_list_state,
+            version_scrollbar_state,
+            selected_list: Default::default(),
+            logs_list_state: ListState::default(),
+            logs_scrollbar_state: ScrollbarState::default(),
         }
     }
 }

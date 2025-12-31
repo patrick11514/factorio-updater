@@ -1,14 +1,15 @@
 use ratatui::{
     Frame,
     layout::{self, Rect},
-    widgets::{Block, HighlightSpacing, ListState, Wrap},
+    widgets::{Block, ListState, Scrollbar, ScrollbarState, Wrap},
 };
 
 use crate::app::{
-    components::log::{Log, LogState},
+    api::structs::Version,
+    components::log::Log,
     config::{Config, InstalledVersion},
-    screens::main::screen::Main,
-    utils::border_with_title,
+    screens::main::screen::{Main, SelectedList},
+    utils::{ORANGE, border_with_title, style_list, style_scrollbar},
 };
 
 use ratatui::{
@@ -49,7 +50,14 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
 
     let installed_versions = &main.api.config.installed_versions;
 
-    render_installed_versions(frame, main_layout[0], installed_versions);
+    render_installed_versions(
+        frame,
+        main_layout[0],
+        installed_versions,
+        &mut main.version_list_state,
+        &mut main.version_scrollbar_state,
+        matches!(main.selected_list, SelectedList::Versions),
+    );
     render_more_info(
         frame,
         main_layout[1],
@@ -57,7 +65,14 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
             .and_then(|idx| installed_versions.get(idx)),
     );
 
-    render_logs(frame, layout[2], &mut main.logs);
+    render_logs(
+        frame,
+        layout[2],
+        &mut main.logs,
+        &mut main.logs_list_state,
+        &mut main.logs_scrollbar_state,
+        matches!(main.selected_list, SelectedList::Logs),
+    );
 }
 
 fn render_title(config: &Config, frame: &mut Frame, area: Rect) {
@@ -74,11 +89,18 @@ fn render_title(config: &Config, frame: &mut Frame, area: Rect) {
     frame.render_widget(title, area);
 }
 
-fn render_installed_versions(frame: &mut Frame, area: Rect, installed: &Vec<InstalledVersion>) {
+fn render_installed_versions(
+    frame: &mut Frame,
+    area: Rect,
+    installed: &Vec<InstalledVersion>,
+    list_state: &mut ListState,
+    scrollbar_state: &mut ScrollbarState,
+    selected: bool,
+) {
     let title = if area.width > 50 {
-        "Installed Versions - [A] to install a new version"
+        "[I] Installed Versions - [A] to install a new version"
     } else {
-        "[A] Installed"
+        "[I] Installed [A] New"
     };
 
     let area = border_with_title(
@@ -89,6 +111,11 @@ fn render_installed_versions(frame: &mut Frame, area: Rect, installed: &Vec<Inst
                 .bold(),
         ),
         area,
+        if selected {
+            Style::default().fg(ORANGE).bold()
+        } else {
+            Style::default()
+        },
     );
 
     if installed.is_empty() {
@@ -100,6 +127,25 @@ fn render_installed_versions(frame: &mut Frame, area: Rect, installed: &Vec<Inst
         frame.render_widget(paragraph, area);
         return;
     }
+
+    let items = installed.iter().map(|version| {
+        format!(
+            "Factorio{} - {} for {}",
+            match version.version {
+                Version::Vanilla => "",
+                Version::SpaceAge => " Space Age",
+                Version::Headless => " Headless",
+            },
+            version.current_version,
+            version.platform
+        )
+    });
+
+    let list = style_list(List::new(items));
+    frame.render_stateful_widget(list, area, list_state);
+
+    let scrollbar = style_scrollbar(Scrollbar::default());
+    frame.render_stateful_widget(scrollbar, area, scrollbar_state);
 }
 
 fn render_more_info(frame: &mut Frame, area: Rect, version: Option<&InstalledVersion>) {
@@ -111,10 +157,11 @@ fn render_more_info(frame: &mut Frame, area: Rect, version: Option<&InstalledVer
                 .bold(),
         ),
         area,
+        Style::default(),
     );
 
     if let Some(version) = version {
-        todo!("Render more info about selected version");
+        //TODO
     } else {
         let paragraph = Paragraph::new("No version selected")
             .style(Style::default().fg(Color::Red).bold())
@@ -125,20 +172,30 @@ fn render_more_info(frame: &mut Frame, area: Rect, version: Option<&InstalledVer
     }
 }
 
-fn render_logs(frame: &mut Frame, area: Rect, logs: &mut Vec<Box<Log>>) {
+fn render_logs(
+    frame: &mut Frame,
+    area: Rect,
+    logs: &mut Vec<Box<Log>>,
+    list_state: &mut ListState,
+    scrollbar_state: &mut ScrollbarState,
+    selected: bool,
+) {
     let logs_container = border_with_title(
         frame,
-        Line::from("Logs").style(Style::default().fg(Color::Indexed(196) /* Red */).bold()),
+        Line::from("[L] Logs").style(Style::default().fg(Color::Indexed(196) /* Red */).bold()),
         area,
+        if selected {
+            Style::default().fg(ORANGE).bold()
+        } else {
+            Style::default()
+        },
     );
 
     let items = logs.iter_mut().rev().map(|log| log.render(&logs_container));
 
-    let logs = List::new(items)
-        .direction(ListDirection::BottomToTop)
-        .highlight_style(Style::default().bg(Color::Blue).fg(Color::White).bold())
-        .highlight_symbol(">")
-        .highlight_spacing(HighlightSpacing::Always);
+    let logs = style_list(List::new(items).direction(ListDirection::BottomToTop));
+    frame.render_stateful_widget(logs, logs_container, list_state);
 
-    frame.render_widget(logs, logs_container);
+    let scrollbar = style_scrollbar(Scrollbar::default());
+    frame.render_stateful_widget(scrollbar, logs_container, scrollbar_state);
 }

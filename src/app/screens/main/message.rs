@@ -6,6 +6,7 @@ use crate::app::{
         log::{Log, LogState},
         popup::Popup,
     },
+    config::InstalledVersion,
     screens::main::components::{
         run::{InstalledVersionDetails, RunState},
         tick::OpenedPopup,
@@ -21,4 +22,5 @@ pub enum MainMessage {
     ChangeRunState(RunState),
     VersionDetails(Vec<InstalledVersionDetails>, State),
     OpenPopup((OpenedPopup, Popup<'static>)),
+    VersionInstalled(InstalledVersion),
 }
