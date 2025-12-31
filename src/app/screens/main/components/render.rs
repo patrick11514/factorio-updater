@@ -1,6 +1,8 @@
 use ratatui::{
     Frame,
     layout::{self, Rect},
+    style::Modifier,
+    text::Span,
     widgets::{Block, ListState, Scrollbar, ScrollbarOrientation, ScrollbarState, Wrap},
 };
 
@@ -8,7 +10,10 @@ use crate::app::{
     api::structs::Version,
     components::log::Log,
     config::{Config, InstalledVersion},
-    screens::main::screen::{Main, SelectedList},
+    screens::main::{
+        components::run::{InstalledVersionDetails, InstalledVersionState, UpdateType},
+        screen::{Main, SelectedList},
+    },
     utils::{ORANGE, border_with_title, style_list, style_scrollbar},
 };
 
@@ -54,6 +59,7 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
         frame,
         main_layout[0],
         installed_versions,
+        &main.installed_version_details,
         &mut main.version_list_state,
         &mut main.version_scrollbar_state,
         matches!(main.selected_list, SelectedList::Versions),
@@ -63,6 +69,8 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
         main_layout[1],
         main.selected_version
             .and_then(|idx| installed_versions.get(idx)),
+        main.selected_version
+            .and_then(|idx| main.installed_version_details.get(idx)),
     );
 
     render_logs(
@@ -93,6 +101,7 @@ fn render_installed_versions(
     frame: &mut Frame,
     area: Rect,
     installed: &Vec<InstalledVersion>,
+    details: &Vec<InstalledVersionDetails>,
     list_state: &mut ListState,
     scrollbar_state: &mut ScrollbarState,
     selected: bool,
@@ -128,17 +137,42 @@ fn render_installed_versions(
         return;
     }
 
-    let items = installed.iter().map(|version| {
-        format!(
-            "Factorio{} - {} for {}",
-            match version.version {
-                Version::Vanilla => "",
-                Version::SpaceAge => " Space Age",
-                Version::Headless => " Headless",
+    let items = installed.iter().enumerate().map(|(idx, version)| {
+        let detail = details.get(idx);
+
+        let state = detail.map(|d| &d.state);
+
+        Line::from(vec![
+            match state {
+                None => Span::styled(" ? ", Style::default().fg(Color::Yellow)),
+                Some(InstalledVersionState::UpToDate) => {
+                    Span::styled(" ✔ ", Style::default().fg(Color::Green))
+                }
+                Some(InstalledVersionState::UpdateAvailable(_)) => {
+                    Span::styled(" ▲ ", Style::default().fg(Color::Blue))
+                }
             },
-            version.current_version,
-            version.platform
-        )
+            Span::styled("Factorio ", Style::default().fg(ORANGE).bold()), // Standard Orange
+            match version.version {
+                Version::Vanilla => Span::raw(""), // Vanilla usually doesn't need a tag
+                Version::SpaceAge => Span::styled(
+                    "Space Age ",
+                    Style::default()
+                        .fg(Color::Cyan)
+                        .add_modifier(Modifier::ITALIC),
+                ),
+                Version::Headless => Span::styled("Headless ", Style::default().fg(Color::Magenta)),
+            },
+            Span::styled(
+                &version.current_version,
+                Style::default().fg(Color::White).bold(),
+            ),
+            Span::styled(" • ", Style::default().fg(Color::DarkGray)),
+            Span::styled(
+                format!("{}", version.platform),
+                Style::default().fg(Color::DarkGray),
+            ),
+        ])
     });
 
     let list = style_list(List::new(items));
@@ -148,10 +182,24 @@ fn render_installed_versions(
     frame.render_stateful_widget(scrollbar, area, scrollbar_state);
 }
 
-fn render_more_info(frame: &mut Frame, area: Rect, version: Option<&InstalledVersion>) {
+fn render_more_info(
+    frame: &mut Frame,
+    area: Rect,
+    version: Option<&InstalledVersion>,
+    details: Option<&InstalledVersionDetails>,
+) {
     let area = border_with_title(
         frame,
-        Line::from("More Info").style(
+        Line::from(if let Some(details) = details {
+            if matches!(details.state, InstalledVersionState::UpdateAvailable(_)) {
+                "More Info - [U] to update"
+            } else {
+                "More Info"
+            }
+        } else {
+            "More Info -  ?"
+        })
+        .style(
             Style::default()
                 .fg(Color::Indexed(45) /* Light Blue */)
                 .bold(),
@@ -160,8 +208,121 @@ fn render_more_info(frame: &mut Frame, area: Rect, version: Option<&InstalledVer
         Style::default(),
     );
 
-    if let Some(version) = version {
-        //TODO
+    if let Some(info) = version {
+        let label_style = Style::default().fg(Color::Cyan);
+        let value_style = Style::default().fg(Color::White);
+        let path_style = Style::default()
+            .fg(Color::DarkGray)
+            .add_modifier(Modifier::ITALIC);
+
+        let mut lines = vec![];
+
+        lines.push(Line::from(vec![
+            Span::styled(
+                match info.version {
+                    Version::Vanilla => "Factorio Vanilla",
+                    Version::SpaceAge => "Factorio Space Age",
+                    Version::Headless => "Factorio Headless",
+                },
+                Style::default()
+                    .fg(Color::Magenta)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" "),
+            Span::styled(
+                format!("({})", info.platform),
+                Style::default().fg(Color::Gray),
+            ),
+        ]));
+
+        lines.push(Line::from(""));
+
+        lines.push(Line::from(vec![
+            Span::styled("Current Version: ", label_style),
+            Span::styled(&info.current_version, value_style),
+        ]));
+
+        lines.push(Line::from(vec![
+            Span::styled("Install Path:    ", label_style),
+            Span::styled(info.path.display().to_string(), path_style),
+        ]));
+
+        lines.push(Line::from(""));
+
+        if let Some(detail) = details {
+            match &detail.state {
+                InstalledVersionState::UpToDate => {
+                    lines.push(Line::from(vec![
+                        Span::styled("Status: ", label_style),
+                        Span::styled("✔ Up to date", Style::default().fg(Color::Green)),
+                    ]));
+                }
+                InstalledVersionState::UpdateAvailable(update_type) => {
+                    lines.push(Line::from(vec![
+                        Span::styled("Status: ", label_style),
+                        Span::styled("▲ Update Available", Style::default().fg(Color::Yellow)),
+                    ]));
+
+                    match update_type {
+                        UpdateType::FullGame(target_ver) => {
+                            lines.push(Line::from(vec![
+                                Span::raw("  • Method: "),
+                                Span::styled("Full Game Download", Style::default().fg(Color::Red)),
+                            ]));
+                            lines.push(Line::from(vec![
+                                Span::raw("  • Target: "),
+                                Span::styled(target_ver, Style::default().fg(Color::Green).bold()),
+                            ]));
+                        }
+                        UpdateType::Patch(diffs) => {
+                            let target_ver =
+                                diffs.last().map(|d| &d.to).unwrap_or(&info.current_version);
+                            let count = diffs.len();
+
+                            lines.push(Line::from(vec![
+                                Span::raw("  • Method: "),
+                                Span::styled(
+                                    format!("Incremental Patches ({})", count),
+                                    Style::default().fg(Color::Blue),
+                                ),
+                            ]));
+                            lines.push(Line::from(vec![
+                                Span::raw("  • Target: "),
+                                Span::styled(target_ver, Style::default().fg(Color::Green).bold()),
+                            ]));
+
+                            lines.push(Line::from(""));
+                            lines.push(Line::from(Span::styled(
+                                "Patch Chain:",
+                                Style::default().fg(Color::Gray),
+                            )));
+
+                            if count <= 3 {
+                                for diff in diffs {
+                                    lines.push(Line::from(format!(
+                                        "    {} -> {}",
+                                        diff.from, diff.to
+                                    )));
+                                }
+                            } else {
+                                let first = &diffs[0];
+                                let last = diffs.last().unwrap();
+                                lines.push(Line::from(format!(
+                                    "    {} -> ... ({} steps) ... -> {}",
+                                    first.from, count, last.to
+                                )));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        let paragraph = Paragraph::new(lines)
+            .style(Style::default().fg(Color::White))
+            .wrap(Wrap { trim: false });
+
+        frame.render_widget(paragraph, area);
     } else {
         let paragraph = Paragraph::new("No version selected")
             .style(Style::default().fg(Color::Red).bold())

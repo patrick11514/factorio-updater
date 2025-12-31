@@ -147,13 +147,13 @@ impl Log {
                 Span::styled(
                     bar,
                     Style::default().fg(match progress {
-                        0..=15 => style::Color::Indexed(196),
+                        0..=15 => style::Color::Indexed(196), /* Red */
                         16..=30 => ORANGE,
-                        31..=45 => style::Color::Indexed(208),
-                        46..=60 => style::Color::Indexed(214),
-                        61..=75 => style::Color::Indexed(226),
-                        76..=90 => style::Color::Indexed(118),
-                        91..=100 => style::Color::Indexed(46),
+                        31..=45 => style::Color::Indexed(208), /* Orange */
+                        46..=60 => style::Color::Indexed(214), /* Yellow */
+                        61..=75 => style::Color::Indexed(226), /* Yellow-Green */
+                        76..=90 => style::Color::Indexed(118), /* Light Green */
+                        91..=100 => style::Color::Indexed(46), /* Green */
                         _ => style::Color::White,
                     }),
                 )
