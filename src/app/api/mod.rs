@@ -1,11 +1,11 @@
 use std::fmt::Display;
 
 use reqwest::StatusCode;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Serialize, ser::Error};
 
 use crate::app::{
-    api::structs::{Arch, Item, Updates},
-    config::Config,
+    api::structs::{Arch, Item, Platform, Updates, Version, VersionDiff},
+    config::{Config, InstalledVersion},
 };
 pub(crate) mod structs;
 
@@ -152,5 +152,66 @@ impl Api {
                 return Err(ApiError::ResponseCode(res.status().as_u16()));
             }
         })
+    }
+
+    pub async fn get_patch_download(
+        &self,
+        patch: &VersionDiff,
+        version: &InstalledVersion,
+    ) -> Result<reqwest::Response, ApiError> {
+        let client = reqwest::Client::new();
+        let mut query_params = self.config.to_query_params();
+        let arch: Arch = (&version.version, &version.platform).into();
+        let arch = arch.to_string();
+
+        query_params.extend([
+            ("from", patch.from.as_str()),
+            ("to", patch.to.as_str()),
+            ("package", arch.as_str()),
+        ]);
+
+        let res = match client
+            .get(format!("{BASE_URL}/get-download-link"))
+            .query(&query_params)
+            .send()
+            .await
+        {
+            Ok(res) => res,
+            Err(err) => return Err(ApiError::Reqwest(err)),
+        };
+
+        if res.status() != StatusCode::OK {
+            return Err(ApiError::ResponseCode(res.status().as_u16()));
+        }
+
+        let text = match res.text().await {
+            Ok(text) => text,
+            Err(err) => return Err(ApiError::Reqwest(err)),
+        };
+
+        let json = match serde_json::from_str::<Vec<String>>(&text) {
+            Ok(json) => json,
+            Err(err) => return Err(ApiError::Decode(err, text)),
+        };
+
+        if json.len() != 1 {
+            return Err(ApiError::Decode(
+                serde_json::Error::custom("Unexpected number of download links"),
+                text,
+            ));
+        }
+
+        let download_link = &json[0];
+
+        let res = match client.get(download_link).send().await {
+            Ok(req) => req,
+            Err(err) => return Err(ApiError::Reqwest(err)),
+        };
+
+        if res.status() != StatusCode::OK {
+            return Err(ApiError::ResponseCode(res.status().as_u16()));
+        }
+
+        Ok(res)
     }
 }

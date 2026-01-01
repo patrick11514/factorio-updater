@@ -276,6 +276,7 @@ impl VersionInstall {
         }
 
         details.state = InstalledVersionState::Updating;
+        main.opened_popup = None;
         Some(ScreenEvent::ClosePopup)
     }
 }

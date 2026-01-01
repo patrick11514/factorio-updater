@@ -9,8 +9,6 @@ use ratatui::{
 
 use crate::app::api::structs::{Arch, Item, Platform, Updates, Version};
 
-pub(crate) mod installation;
-
 pub fn with_title(frame: &mut Frame, title: Line, area: Rect) -> Rect {
     let layout = Layout::default()
         .direction(ratatui::layout::Direction::Vertical)

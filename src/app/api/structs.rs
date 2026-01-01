@@ -105,6 +105,25 @@ pub enum Arch {
     Other,
 }
 
+impl Display for Arch {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Arch::CoreLinux32 => write!(f, "core-linux32"),
+            Arch::CoreLinux64 => write!(f, "core-linux64"),
+            Arch::CoreLinuxHeadless64 => write!(f, "core-linux_headless64"),
+            Arch::CoreMac => write!(f, "core-mac"),
+            Arch::CoreMacArm64 => write!(f, "core-mac-arm64"),
+            Arch::CoreMacX64 => write!(f, "core-mac-x64"),
+            Arch::CoreWin32 => write!(f, "core-win32"),
+            Arch::CoreWin64 => write!(f, "core-win64"),
+            Arch::CoreExpansionLinux64 => write!(f, "core_expansion-linux64"),
+            Arch::CoreExpansionMac => write!(f, "core_expansion-mac"),
+            Arch::CoreExpansionWin64 => write!(f, "core_expansion-win64"),
+            Arch::Other => write!(f, "other"),
+        }
+    }
+}
+
 impl From<(Version, Platform)> for Arch {
     fn from((version, platform): (Version, Platform)) -> Self {
         (&version, &platform).into()

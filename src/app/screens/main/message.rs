@@ -24,7 +24,8 @@ pub enum MainMessage {
     LoadVersions(Result<Response<Updates>, ApiError>, State),
     ChangeRunState(RunState),
     VersionDetails(HashMap<uuid::Uuid, InstalledVersionDetails>, State),
-    OpenPopup((OpenedPopup, Popup<'static>)),
+    OpenPopup(OpenedPopup, Popup<'static>),
     VersionInstalled(InstalledVersion),
+    VersionUpdateFailed(Popup<'static>),
     VersionUpdated(uuid::Uuid, String),
 }

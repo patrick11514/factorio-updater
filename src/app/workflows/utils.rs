@@ -66,7 +66,7 @@ pub async fn get_download_link(
         }
         Err(popup) => {
             let _ = tx
-                .send(MainMessage::OpenPopup((OpenedPopup::ErrorNotify, popup)))
+                .send(MainMessage::OpenPopup(OpenedPopup::ErrorNotify, popup))
                 .await;
             state.lock().unwrap().error();
             return None;
@@ -102,7 +102,7 @@ pub async fn download_archive(tx: Sender<MainMessage>, res: reqwest::Response) -
                 .unwrap();
 
             let _ = tx
-                .send(MainMessage::OpenPopup((OpenedPopup::ErrorNotify, popup)))
+                .send(MainMessage::OpenPopup(OpenedPopup::ErrorNotify, popup))
                 .await;
 
             state.lock().unwrap().error();
@@ -126,7 +126,7 @@ pub async fn download_archive(tx: Sender<MainMessage>, res: reqwest::Response) -
                     .unwrap();
 
                 let _ = tx
-                    .send(MainMessage::OpenPopup((OpenedPopup::ErrorNotify, popup)))
+                    .send(MainMessage::OpenPopup(OpenedPopup::ErrorNotify, popup))
                     .await;
 
                 state.lock().unwrap().error();
@@ -145,7 +145,7 @@ pub async fn download_archive(tx: Sender<MainMessage>, res: reqwest::Response) -
                         .unwrap();
 
                     let _ = tx
-                        .send(MainMessage::OpenPopup((OpenedPopup::ErrorNotify, popup)))
+                        .send(MainMessage::OpenPopup(OpenedPopup::ErrorNotify, popup))
                         .await;
 
                     state.lock().unwrap().error();
@@ -188,7 +188,7 @@ pub async fn extract(
                     .unwrap();
 
                 let _ = tx
-                    .send(MainMessage::OpenPopup((OpenedPopup::ErrorNotify, popup)))
+                    .send(MainMessage::OpenPopup(OpenedPopup::ErrorNotify, popup))
                     .await;
 
                 return None;
@@ -224,7 +224,7 @@ pub async fn extract(
                 .unwrap();
 
             let _ = tx
-                .send(MainMessage::OpenPopup((OpenedPopup::ErrorNotify, popup)))
+                .send(MainMessage::OpenPopup(OpenedPopup::ErrorNotify, popup))
                 .await;
 
             state.lock().unwrap().error();
@@ -279,4 +279,43 @@ fn extract_zip(archive: TempFile, target: PathBuf) -> Result<(), ExtractResult> 
     Ok(())
 }
 
-//pub async fn fetch_all_version
+pub async fn find_factorio_binary(base_path: &PathBuf) -> Option<PathBuf> {
+    let bin_folder = base_path.join("bin");
+
+    let mut bin_entries = tokio::fs::read_dir(&bin_folder).await.ok()?;
+
+    let arch_folder_path = loop {
+        match bin_entries.next_entry().await {
+            Ok(Some(entry)) => {
+                if entry.file_type().await.ok()?.is_dir() {
+                    break Some(entry.path());
+                }
+            }
+            Ok(None) => break None,
+            Err(_) => break None,
+        }
+    }?;
+
+    // x32/x64 folder
+    let mut arch_entries = tokio::fs::read_dir(&arch_folder_path).await.ok()?;
+
+    loop {
+        match arch_entries.next_entry().await {
+            Ok(Some(entry)) => {
+                let name = entry.file_name().to_string_lossy().to_lowercase();
+
+                let is_executable = if name.ends_with(".exe") {
+                    name == "factorio.exe"
+                } else {
+                    name == "factorio"
+                };
+
+                if is_executable {
+                    return Some(entry.path());
+                }
+            }
+            Ok(None) => return None,
+            Err(_) => return None,
+        }
+    }
+}

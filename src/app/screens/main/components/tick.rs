@@ -9,7 +9,7 @@ use crate::app::{
     },
     components::popup::PopupBuilder,
     screens::{
-        ScreenEvent,
+        Screen, ScreenEvent,
         main::{components::run::RunState, message::MainMessage, screen::Main},
     },
 };
@@ -144,7 +144,7 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 main.installed_version_details = items;
                 state.lock().unwrap().finish();
             }
-            MainMessage::OpenPopup((opened_popup, popup)) => {
+            MainMessage::OpenPopup(opened_popup, popup) => {
                 main.opened_popup = Some(opened_popup);
                 return Some(ScreenEvent::OpenPopup(popup));
             }
@@ -173,6 +173,14 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 main.run_state = RunState::CheckForUpdates;
 
                 return Some(ScreenEvent::RunInit);
+            }
+            MainMessage::VersionUpdateFailed(popup) => {
+                main.opened_popup = Some(OpenedPopup::ErrorNotify);
+                main.run_state = RunState::CheckForUpdates;
+
+                main.init();
+
+                return Some(ScreenEvent::OpenPopup(popup));
             }
         }
     }
