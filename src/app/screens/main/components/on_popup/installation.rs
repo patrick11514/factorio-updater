@@ -19,19 +19,19 @@ use crate::app::{
         main::{
             components::{
                 popup_templates::install_popup,
-                run::InstalledVersionState,
+                run::{InstalledVersionState, RunState},
                 tick::{OpenedPopup, VersionCreateStep},
             },
             screen::Main,
         },
     },
     utils::{ORANGE, get_sorted_updates},
-    workflows::{install_full_version, install_update},
+    workflows::{delete_version, install_full_version, install_update},
 };
 
-pub struct VersionInstall {}
+pub struct VersionManage {}
 
-impl VersionInstall {
+impl VersionManage {
     pub fn select(main: &mut Main, state: &VersionCreateStep, idx: usize) -> Option<ScreenEvent> {
         let mut popup = PopupBuilder::default();
         install_popup(&mut popup);
@@ -220,7 +220,7 @@ impl VersionInstall {
                 }
             }
 
-            return VersionInstall::open_summary_popup(main, platform, version, patch, value);
+            return VersionManage::open_summary_popup(main, platform, version, patch, value);
         }
 
         None
@@ -233,7 +233,7 @@ impl VersionInstall {
                 version,
                 patch,
                 install_path,
-            } => VersionInstall::open_summary_popup(
+            } => VersionManage::open_summary_popup(
                 main,
                 platform,
                 version,
@@ -276,6 +276,24 @@ impl VersionInstall {
         }
 
         details.state = InstalledVersionState::Updating;
+        main.opened_popup = None;
+        Some(ScreenEvent::ClosePopup)
+    }
+
+    pub async fn delete(main: &mut Main, idx: uuid::Uuid) -> Option<ScreenEvent> {
+        let tx = main.tx.clone();
+        let data = main
+            .api
+            .config
+            .installed_versions
+            .get(&idx)
+            .unwrap()
+            .clone();
+
+        tokio::spawn(async move {
+            delete_version(tx, idx, data).await;
+        });
+
         main.opened_popup = None;
         Some(ScreenEvent::ClosePopup)
     }

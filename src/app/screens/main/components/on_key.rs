@@ -197,6 +197,28 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
 
             None
         }
+        KeyCode::Char('d') | KeyCode::Char('D') if main.opened_popup.is_none() => {
+            if let Some(idx) = main.selected_version {
+                let popup = PopupBuilder::default()
+                    .title("Delete Version")
+                    .size(PopupSize::Medium)
+                    .content(
+                        Paragraph::new(vec![
+                            Line::from("Are you sure you want to delete the selected version?")
+                                .style(Style::default().fg(ORANGE).bold()),
+                        ])
+                        .wrap(Wrap { trim: false }),
+                    )
+                    .popup_type(PopupType::YesNo)
+                    .build()
+                    .unwrap();
+
+                main.opened_popup = Some(OpenedPopup::VersionDelete(idx));
+
+                return Some(ScreenEvent::OpenPopup(popup));
+            }
+            None
+        }
         _ => None,
     };
 

@@ -346,3 +346,36 @@ pub async fn install_update(
         .send(MainMessage::VersionUpdated(uuid, target_version))
         .await;
 }
+
+pub async fn delete_version(tx: Sender<MainMessage>, uuid: uuid::Uuid, data: InstalledVersion) {
+    let main_log = LogBuilder::text(format!(
+        "Deleting Factorio{} {} v{}...",
+        match &data.version {
+            Version::Vanilla => "",
+            Version::SpaceAge => " Space Age",
+            Version::Headless => " Headless",
+        },
+        data.platform.to_string(),
+        data.current_version,
+    ))
+    .state(LogState::default())
+    .build()
+    .unwrap();
+    let main_state = main_log.state.clone();
+    let _ = tx.send(MainMessage::CreateLog(main_log)).await;
+
+    //remove installation
+    if data.path.exists() {
+        match tokio::fs::remove_dir_all(&data.path).await {
+            Ok(_) => {}
+            Err(_) => {
+                main_state.lock().unwrap().error();
+                return;
+            }
+        }
+    }
+
+    main_state.lock().unwrap().finish();
+
+    let _ = tx.send(MainMessage::VersionDeleted(uuid)).await;
+}

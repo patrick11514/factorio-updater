@@ -50,6 +50,7 @@ pub enum OpenedPopup {
     ErrorNotify,
     VersionCreate(VersionCreateStep),
     VersionUpdate(uuid::Uuid),
+    VersionDelete(uuid::Uuid),
 }
 
 pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
@@ -181,6 +182,25 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 main.init();
 
                 return Some(ScreenEvent::OpenPopup(popup));
+            }
+            MainMessage::VersionDeleted(uuid) => {
+                main.api.config.installed_versions.remove(&uuid);
+                main.installed_version_details.remove(&uuid);
+                let config = main.api.config.clone();
+                tokio::spawn(async move {
+                    let _ = config.save().await;
+                });
+
+                //set the selected version to first one
+                let installed_versions =
+                    Main::get_installed_versions(&main.api.config.installed_versions);
+                if installed_versions.is_empty() {
+                    main.selected_version = None;
+                } else {
+                    main.selected_version = Some(installed_versions[0].0.clone());
+                }
+
+                return None;
             }
         }
     }

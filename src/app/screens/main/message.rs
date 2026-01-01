@@ -28,4 +28,5 @@ pub enum MainMessage {
     VersionInstalled(InstalledVersion),
     VersionUpdateFailed(Popup<'static>),
     VersionUpdated(uuid::Uuid, String),
+    VersionDeleted(uuid::Uuid),
 }

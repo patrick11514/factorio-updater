@@ -39,6 +39,7 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
             layout::Constraint::Length(3),
             layout::Constraint::Ratio(2, 3),
             layout::Constraint::Min(3),
+            layout::Constraint::Length(1), //for help
         ])
         .split(inner);
 
@@ -83,6 +84,8 @@ pub fn render(main: &mut Main, frame: &mut ratatui::Frame) {
         &mut main.logs_scrollbar_state,
         matches!(main.selected_list, SelectedList::Logs),
     );
+
+    render_help(frame, layout[3]);
 }
 
 fn render_title(config: &Config, frame: &mut Frame, area: Rect) {
@@ -390,4 +393,37 @@ fn render_logs(
 
     let scrollbar = style_scrollbar(Scrollbar::default());
     frame.render_stateful_widget(scrollbar, logs_container, scrollbar_state);
+}
+
+fn render_help(frame: &mut Frame, area: Rect) {
+    let commands = [
+        ("I", "Versions", "Focus installed versions", ORANGE),
+        ("A", "Add", "Add new version", Color::Green),
+        ("U", "Update", "Update selected version", Color::Blue),
+        ("D", "Delete", "Delete selected version", Color::Red),
+        ("L", "Logs", "Focus logs", Color::Gray),
+    ];
+
+    let use_short = area.width < 135;
+
+    let spans: Vec<Span> = commands
+        .iter()
+        .enumerate()
+        .flat_map(|(i, (key, short, long, color))| {
+            let desc = if use_short { *short } else { *long };
+            let text = format!("{} - {}", key, desc);
+
+            let mut items = vec![Span::styled(text, Style::default().fg(*color))];
+            if i < commands.len() - 1 {
+                items.push(Span::raw(" | "));
+            }
+            items
+        })
+        .collect();
+
+    let paragraph = Paragraph::new(Line::from(spans))
+        .style(Style::default().bold())
+        .centered();
+
+    frame.render_widget(paragraph, area);
 }
