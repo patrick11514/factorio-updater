@@ -1,10 +1,6 @@
 pub(crate) mod utils;
 
-use std::{
-    path::{Path, PathBuf},
-    process::{ExitStatus, Stdio},
-    sync::atomic::Ordering,
-};
+use std::{path::PathBuf, process::Stdio, sync::atomic::Ordering};
 
 use crate::app::{
     api::{
@@ -16,18 +12,15 @@ use crate::app::{
         popup::PopupBuilder,
     },
     config::InstalledVersion,
-    screens::main::{
-        components::{
-            run::UpdateType,
-            tick::{OpenedPopup, VersionCreateStep},
-        },
-        message::MainMessage,
-    },
+    screens::main::{components::run::UpdateType, message::MainMessage},
     workflows::utils::{download_archive, extract, find_factorio_binary, get_download_link},
 };
 use async_tempfile::TempFile;
-use futures_util::{StreamExt, future::try_join_all};
-use tokio::{fs, io::AsyncWriteExt, process::Command, sync::mpsc::Sender};
+use futures_util::{
+    StreamExt,
+    future::{join_all, try_join_all},
+};
+use tokio::{io::AsyncWriteExt, process::Command, sync::mpsc::Sender};
 
 pub async fn install_full_version(
     tx: Sender<MainMessage>,
@@ -69,6 +62,8 @@ pub async fn install_full_version(
         }
     };
 
+    let path = PathBuf::from(&path);
+
     match extract(tx.clone(), file, &platform, &path).await {
         Some(_) => {}
         None => {
@@ -84,7 +79,7 @@ pub async fn install_full_version(
             version: version,
             platform: platform,
             current_version: patch.to_string_raw().to_string(),
-            path: PathBuf::from(path),
+            path,
             installed_at: chrono::Utc::now(),
         }))
         .await;
@@ -93,7 +88,6 @@ pub async fn install_full_version(
 enum PatchError {
     PatchNotFound,
     DownloadFailed,
-    ExtractionFailed,
 }
 
 pub async fn install_update(
@@ -202,9 +196,6 @@ pub async fn install_update(
                                     }
                                     PatchError::DownloadFailed => {
                                         "Failed to download patch.".to_string()
-                                    }
-                                    PatchError::ExtractionFailed => {
-                                        "Failed to extract patch.".to_string()
                                     }
                                 })
                                 .build()
@@ -327,11 +318,27 @@ pub async fn install_update(
         };
 
         //remove old installation
-        &[
+        let to_remove = &["data", "bin", "doc-html", "tests"];
 
-        ]
-        tokio::fs::remove_dir_all(path)
-        
+        join_all(
+            to_remove
+                .into_iter()
+                .map(|dir| {
+                    let path = data.path.join(dir);
+                    async move {
+                        if path.exists() {
+                            let _ = tokio::fs::remove_dir_all(path).await;
+                        }
+                    }
+                })
+                .collect::<Vec<_>>(),
+        )
+        .await;
+
+        if let None = extract(tx.clone(), file, &data.platform, &data.path).await {
+            main_state.lock().unwrap().error();
+            return;
+        }
     }
 
     main_state.lock().unwrap().finish();

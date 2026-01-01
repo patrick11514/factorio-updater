@@ -172,7 +172,7 @@ pub async fn extract(
     tx: Sender<MainMessage>,
     file: TempFile,
     platform: &Platform,
-    path: &str,
+    path: &PathBuf,
 ) -> Option<()> {
     let path = Path::new(path);
 

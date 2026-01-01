@@ -4,7 +4,7 @@ use reqwest::StatusCode;
 use serde::{Deserialize, Serialize, ser::Error};
 
 use crate::app::{
-    api::structs::{Arch, Item, Platform, Updates, Version, VersionDiff},
+    api::structs::{Arch, Item, Updates, VersionDiff},
     config::{Config, InstalledVersion},
 };
 pub(crate) mod structs;
