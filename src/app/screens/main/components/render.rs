@@ -156,7 +156,7 @@ fn render_installed_versions(
                 Some(InstalledVersionState::UpdateAvailable(_)) => {
                     Span::styled(" ▲ ", Style::default().fg(Color::Blue))
                 }
-                Some(InstalledVersionState::Updating) => {
+                Some(InstalledVersionState::Updating | InstalledVersionState::Updated) => {
                     Span::styled(" ⟳ ", Style::default().fg(Color::Magenta))
                 }
             },
@@ -340,7 +340,7 @@ fn render_more_info(
                         }
                     }
                 }
-                InstalledVersionState::Updating => {
+                InstalledVersionState::Updating | InstalledVersionState::Updated => {
                     lines.push(Line::from(vec![
                         Span::styled("Status: ", label_style),
                         Span::styled("⟳ Updating", Style::default().fg(Color::Magenta)),

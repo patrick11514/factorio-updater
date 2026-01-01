@@ -16,5 +16,7 @@ TODO real :) :
 - [x] Scrollable logs -> on focus arrow up + down
 - [x] Display some symbol next to each version, like its Up to date/needs update
 - [x] Add details
-- [ ] Perform patch updates/again full update if no patches to go stable exists
-- [ ] Add some sort of deleting the installed versions (D key?)
+- [x] Perform patch updates/again full update if no patches to go stable exists
+- [x] Add some sort of deleting the installed versions (D key?)
+- [ ] If extraction fail, we need to remove folder we created :) 
+- [ ] also look into why linux32 extraction fail :D

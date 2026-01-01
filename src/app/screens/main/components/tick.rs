@@ -10,7 +10,11 @@ use crate::app::{
     components::popup::PopupBuilder,
     screens::{
         Screen, ScreenEvent,
-        main::{components::run::RunState, message::MainMessage, screen::Main},
+        main::{
+            components::run::{InstalledVersionState, RunState},
+            message::MainMessage,
+            screen::Main,
+        },
     },
 };
 
@@ -170,6 +174,13 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 tokio::spawn(async move {
                     let _ = config.save().await;
                 });
+
+                //Mark that its updated, so RunInit can actually fetch updates for it
+                main.installed_version_details
+                    .get_mut(&uuid)
+                    .map(|details| {
+                        details.state = InstalledVersionState::Updated;
+                    });
 
                 main.run_state = RunState::CheckForUpdates;
 

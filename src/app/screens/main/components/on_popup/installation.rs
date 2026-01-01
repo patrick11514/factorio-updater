@@ -19,7 +19,7 @@ use crate::app::{
         main::{
             components::{
                 popup_templates::install_popup,
-                run::{InstalledVersionState, RunState},
+                run::InstalledVersionState,
                 tick::{OpenedPopup, VersionCreateStep},
             },
             screen::Main,

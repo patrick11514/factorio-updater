@@ -93,6 +93,7 @@ impl Display for UpdateType {
 pub enum InstalledVersionState {
     UpToDate,
     Updating,
+    Updated,
     UpdateAvailable(UpdateType),
 }
 
@@ -104,6 +105,7 @@ pub struct InstalledVersionDetails {
 pub async fn check_for_updates(
     updates: Arc<Updates>,
     installed_versions: &HashMap<uuid::Uuid, InstalledVersion>,
+    current_details: &HashMap<uuid::Uuid, InstalledVersionDetails>,
     tx: &Sender<MainMessage>,
 ) -> Option<RunState> {
     let log = LogBuilder::text("Checking for updates...")
@@ -117,6 +119,15 @@ pub async fn check_for_updates(
     let version_details = installed_versions
         .iter()
         .map(|(uuid, iv)| {
+            if current_details.len() > 0 {
+                if let Some(details) = current_details.get(uuid) {
+                    if let InstalledVersionState::Updating = details.state {
+                        //if some version is updating, we don't wan't to overwrite its state
+                        return (uuid.clone(), details.clone());
+                    }
+                }
+            }
+
             let arch: Arch = (&iv.version, &iv.platform).into();
             let arch_updates = updates.get(&arch).unwrap();
 

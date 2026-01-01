@@ -114,6 +114,7 @@ impl Screen for Main {
 
         let state = self.run_state.clone();
         let updates = self.updates.clone();
+        let details = self.installed_version_details.clone();
 
         Some(tokio::spawn(async move {
             let mut current_state = state;
@@ -125,6 +126,7 @@ impl Screen for Main {
                         check_for_updates(
                             updates.clone().unwrap(),
                             &api.config.installed_versions,
+                            &details,
                             &tx,
                         )
                         .await
