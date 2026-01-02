@@ -1,0 +1,8 @@
+---
+source: src/app/api/structs.rs
+expression: diff
+---
+{
+  "from": "0.17.79",
+  "to": "1.0.0"
+}

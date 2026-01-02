@@ -54,3 +54,43 @@ pub fn style_scrollbar(scrollbar: Scrollbar) -> Scrollbar {
         .track_symbol(Some("│"))
         .thumb_symbol("█")
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::api::structs::Stable;
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_get_sorted_updates_basic() {
+        let mut updates_map = HashMap::new();
+        let arch = Arch::CoreLinux64;
+        let items = vec![
+            Item::Stable(Stable {
+                stable: "1.1.0".to_string(),
+            }),
+            Item::Stable(Stable {
+                stable: "1.0.0".to_string(),
+            }),
+            Item::Stable(Stable {
+                stable: "1.2.0".to_string(),
+            }),
+        ];
+        updates_map.insert(arch.clone(), items);
+
+        let sorted = get_sorted_updates(&updates_map, &Version::Vanilla, &Platform::Linux64);
+
+        assert_eq!(sorted.len(), 3);
+        assert_eq!(sorted[0].to_string_raw(), "1.2.0");
+        assert_eq!(sorted[1].to_string_raw(), "1.1.0");
+        assert_eq!(sorted[2].to_string_raw(), "1.0.0");
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_get_sorted_updates_missing_arch() {
+        let updates_map = HashMap::new();
+        // Should panic because unwrap() is used on the map get
+        get_sorted_updates(&updates_map, &Version::Vanilla, &Platform::Linux64);
+    }
+}

@@ -30,3 +30,6 @@ async-tempfile = "0.7.0"
 tar = "0.4.44"
 xz2 = "0.1.7"
 flate2 = "1.1.5"
+
+[dev-dependencies]
+insta = { version = "1.45.1", features = ["json"] }

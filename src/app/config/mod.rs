@@ -99,3 +99,40 @@ impl Config {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::{TimeZone, Utc};
+    use insta::assert_json_snapshot;
+    use uuid::Uuid;
+
+    #[test]
+    fn test_config_new() {
+        let username = "testuser".to_string();
+        let token = "testtoken".to_string();
+        let config = Config::new(username.clone(), token.clone());
+
+        assert_eq!(config.username, username);
+        assert_eq!(config.token, token);
+        assert!(config.installed_versions.is_empty());
+    }
+
+    #[test]
+    fn test_config_snapshot() {
+        let mut config = Config::new("user".to_string(), "token123".to_string());
+
+        let uuid = Uuid::parse_str("550e8400-e29b-41d4-a716-446655440000").unwrap();
+        let installed_version = InstalledVersion {
+            version: Version::Vanilla,
+            platform: Platform::Linux64,
+            current_version: "1.1.100".to_string(),
+            path: PathBuf::from("/opt/factorio"),
+            installed_at: Utc.timestamp_opt(1672531200, 0).unwrap(), // 2023-01-01 00:00:00 UTC
+        };
+
+        config.installed_versions.insert(uuid, installed_version);
+
+        assert_json_snapshot!(config);
+    }
+}

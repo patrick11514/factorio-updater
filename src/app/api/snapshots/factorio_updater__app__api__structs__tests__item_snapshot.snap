@@ -1,0 +1,7 @@
+---
+source: src/app/api/structs.rs
+expression: stable
+---
+{
+  "stable": "1.0.0"
+}

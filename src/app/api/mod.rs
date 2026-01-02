@@ -215,3 +215,21 @@ impl Api {
         Ok(res)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_to_query() {
+        let config = Config::new("user".to_string(), "123".to_string());
+        assert_eq!(config.to_query(), "username=user&token=123");
+    }
+
+    #[test]
+    fn test_to_query_params() {
+        let config = Config::new("user".to_string(), "123".to_string());
+        let params = config.to_query_params();
+        assert_eq!(params, vec![("username", "user"), ("token", "123")]);
+    }
+}

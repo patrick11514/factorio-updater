@@ -210,3 +210,102 @@ impl Ord for Item {
 }
 
 pub type Updates = HashMap<Arch, Vec<Item>>;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use insta::assert_json_snapshot;
+
+    #[test]
+    fn test_updates_snapshot() {
+        let mut updates: Updates = HashMap::new();
+
+        let linux_items = vec![
+            Item::Stable(Stable {
+                stable: "1.1.100".to_string(),
+            }),
+            Item::VersionDiff(VersionDiff {
+                from: "1.1.99".to_string(),
+                to: "1.1.100".to_string(),
+            }),
+        ];
+
+        updates.insert(Arch::CoreLinux64, linux_items);
+
+        // Convert to serde_json::Value first to handle map keys correctly if needed
+        // or just verify if serde_json handles it.
+        // The previous error "cannot serialize maps without string keys to JSON" suggests serde_json failed or insta failed.
+        // Let's try converting to Value explicitly.
+        let json = serde_json::to_value(&updates).unwrap();
+        assert_json_snapshot!(json);
+    }
+
+    #[test]
+    fn test_item_snapshot() {
+        let stable = Item::Stable(Stable {
+            stable: "1.0.0".to_string(),
+        });
+        let diff = Item::VersionDiff(VersionDiff {
+            from: "0.17.79".to_string(),
+            to: "1.0.0".to_string(),
+        });
+
+        assert_json_snapshot!(stable);
+        assert_json_snapshot!(diff);
+    }
+
+    #[test]
+    fn test_get_versions_linux64() {
+        let versions = get_versions_by_platform(&Platform::Linux64);
+        assert!(versions.iter().any(|v| matches!(v, Version::Vanilla)));
+        assert!(versions.iter().any(|v| matches!(v, Version::SpaceAge)));
+        assert!(versions.iter().any(|v| matches!(v, Version::Headless)));
+    }
+
+    #[test]
+    fn test_get_versions_win32() {
+        let versions = get_versions_by_platform(&Platform::Win32);
+        assert!(versions.iter().any(|v| matches!(v, Version::Vanilla)));
+        // Win32 likely doesn't support SpaceAge or Headless in this mapping
+        assert!(!versions.iter().any(|v| matches!(v, Version::SpaceAge)));
+        assert!(!versions.iter().any(|v| matches!(v, Version::Headless)));
+    }
+
+    #[test]
+    fn test_arch_conversion_vanilla_linux64() {
+        let arch = Arch::from((&Version::Vanilla, &Platform::Linux64));
+        assert_eq!(arch, Arch::CoreLinux64);
+    }
+
+    #[test]
+    fn test_arch_conversion_spaceage_win64() {
+        let arch = Arch::from((&Version::SpaceAge, &Platform::Win64));
+        assert_eq!(arch, Arch::CoreExpansionWin64);
+    }
+
+    #[test]
+    fn test_arch_conversion_headless_linux64() {
+        let arch = Arch::from((&Version::Headless, &Platform::Linux64));
+        assert_eq!(arch, Arch::CoreLinuxHeadless64);
+    }
+
+    #[test]
+    fn test_arch_conversion_invalid() {
+        // Example: Headless on Win32 might be invalid/Other
+        let arch = Arch::from((&Version::Headless, &Platform::Win32));
+        assert_eq!(arch, Arch::Other);
+    }
+
+    #[test]
+    fn test_version_display() {
+        assert_eq!(format!("{}", Version::Vanilla), "Vanilla");
+        assert_eq!(format!("{}", Version::SpaceAge), "Space Age");
+        assert_eq!(format!("{}", Version::Headless), "Headless");
+    }
+
+    #[test]
+    fn test_platform_display() {
+        assert_eq!(format!("{}", Platform::Linux64), "Linux 64-bit");
+        assert_eq!(format!("{}", Platform::Win64), "Windows 64-bit");
+    }
+}
