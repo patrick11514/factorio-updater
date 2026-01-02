@@ -19,4 +19,5 @@ TODO real :) :
 - [x] Perform patch updates/again full update if no patches to go stable exists
 - [x] Add some sort of deleting the installed versions (D key?)
 - [ ] If extraction fail, we need to remove folder we created :) 
-- [ ] also look into why linux32 extraction fail :D
+- [x] also look into why linux32 extraction fail :D
+- [ ] Maybe add some tests?
