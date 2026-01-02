@@ -95,7 +95,7 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
 
                 let len = main.logs.len();
 
-                if let None = main.selected_log {
+                if main.selected_log.is_none() {
                     main.selected_log = Some(0);
                 }
 
@@ -176,11 +176,8 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 });
 
                 //Mark that its updated, so RunInit can actually fetch updates for it
-                main.installed_version_details
-                    .get_mut(&uuid)
-                    .map(|details| {
-                        details.state = InstalledVersionState::Updated;
-                    });
+                if let Some(details) = main.installed_version_details
+                    .get_mut(&uuid) { details.state = InstalledVersionState::Updated; }
 
                 main.run_state = RunState::CheckForUpdates;
 
@@ -208,7 +205,7 @@ pub fn tick(main: &mut Main) -> Option<ScreenEvent> {
                 if installed_versions.is_empty() {
                     main.selected_version = None;
                 } else {
-                    main.selected_version = Some(installed_versions[0].0.clone());
+                    main.selected_version = Some(*installed_versions[0].0);
                 }
 
                 return None;

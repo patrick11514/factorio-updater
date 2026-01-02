@@ -34,7 +34,7 @@ pub enum ConfigError {
     Write(PathBuf),
 }
 
-static FOLDER_NAME: &'static str = "factorio-updater";
+static FOLDER_NAME: &str = "factorio-updater";
 
 impl Config {
     pub fn new(username: String, token: String) -> Self {

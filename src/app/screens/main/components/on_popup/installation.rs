@@ -140,7 +140,7 @@ impl VersionManage {
             install_path: install_path.clone(),
         }));
 
-        return Some(ScreenEvent::OpenPopup(
+        Some(ScreenEvent::OpenPopup(
             PopupBuilder::default()
                 .title(Line::from("Installation Summary").centered())
                 .popup_type(PopupType::YesNo)
@@ -157,7 +157,7 @@ impl VersionManage {
                 ])))
                 .build()
                 .unwrap(),
-        ));
+        ))
     }
 
     pub fn input(main: &mut Main, state: &VersionCreateStep, value: String) -> Option<ScreenEvent> {

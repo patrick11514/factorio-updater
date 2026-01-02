@@ -40,10 +40,10 @@ pub async fn on_popup(main: &mut Main, res: PopupResult) -> Option<ScreenEvent> 
                 Some(ScreenEvent::ClosePopup)
             }
             (PopupResult::Yes, OpenedPopup::VersionUpdate(idx)) => {
-                VersionManage::update(main, idx.clone()).await
+                VersionManage::update(main, *idx).await
             }
             (PopupResult::Yes, OpenedPopup::VersionDelete(idx)) => {
-                VersionManage::delete(main, idx.clone()).await
+                VersionManage::delete(main, *idx).await
             }
             _ => None,
         }

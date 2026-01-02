@@ -37,8 +37,8 @@ pub async fn install_full_version(
             Version::SpaceAge => " Space Age",
             Version::Headless => " Headless",
         },
-        patch.to_string(),
-        platform.to_string()
+        patch,
+        platform
     ))
     .state(LogState::default())
     .build()
@@ -76,8 +76,8 @@ pub async fn install_full_version(
 
     let _ = tx
         .send(MainMessage::VersionInstalled(InstalledVersion {
-            version: version,
-            platform: platform,
+            version,
+            platform,
             current_version: patch.to_string_raw().to_string(),
             path,
             installed_at: chrono::Utc::now(),
@@ -111,7 +111,7 @@ pub async fn install_update(
             Version::SpaceAge => " Space Age",
             Version::Headless => " Headless",
         },
-        data.platform.to_string(),
+        data.platform,
         data.current_version,
         target_version,
     ))
@@ -140,7 +140,7 @@ pub async fn install_update(
 
         let increment = (100 / version_diffs.len() as u64) as u8;
 
-        let tasks = version_diffs.into_iter().map(|diff| {
+        let tasks = version_diffs.iter().map(|diff| {
             let api = api.clone();
             let progress = progress_value.clone();
             let data = data.clone();
@@ -165,7 +165,7 @@ pub async fn install_update(
                             return Err(PatchError::DownloadFailed);
                         }
                         Ok(bytes) => {
-                            if let Err(_) = temp_file.write_all(&bytes).await {
+                            if (temp_file.write_all(&bytes).await).is_err() {
                                 return Err(PatchError::DownloadFailed);
                             }
                         }
@@ -322,7 +322,7 @@ pub async fn install_update(
 
         join_all(
             to_remove
-                .into_iter()
+                .iter()
                 .map(|dir| {
                     let path = data.path.join(dir);
                     async move {
@@ -355,7 +355,7 @@ pub async fn delete_version(tx: Sender<MainMessage>, uuid: uuid::Uuid, data: Ins
             Version::SpaceAge => " Space Age",
             Version::Headless => " Headless",
         },
-        data.platform.to_string(),
+        data.platform,
         data.current_version,
     ))
     .state(LogState::default())

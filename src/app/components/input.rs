@@ -67,10 +67,7 @@ impl Input<'_> {
     }
 
     pub fn set_error(&mut self, error: Option<&str>) {
-        self.error = match error {
-            Some(err) => Some(err.to_string()),
-            None => None,
-        };
+        self.error = error.map(|err| err.to_string());
     }
 
     pub fn have_error(&self) -> bool {

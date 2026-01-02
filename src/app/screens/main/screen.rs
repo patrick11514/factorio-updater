@@ -69,7 +69,7 @@ impl Main {
         let mut version_scrollbar_state = ScrollbarState::default();
 
         if !api.config.installed_versions.is_empty() {
-            selected_version = Some(api.config.installed_versions.keys().next().unwrap().clone());
+            selected_version = Some(*api.config.installed_versions.keys().next().unwrap());
 
             version_list_state.select(Some(0));
             version_scrollbar_state =

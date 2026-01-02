@@ -35,18 +35,18 @@ pub async fn check_credentials(api: &Api, tx: &Sender<MainMessage>) -> Option<Ru
         Ok(creds) => match creds {
             true => {
                 let _ = tx.send(MainMessage::CheckLogin(Ok(Some(())), state)).await;
-                return Some(RunState::FetchingVersions);
+                Some(RunState::FetchingVersions)
             }
             false => {
                 let _ = tx.send(MainMessage::CheckLogin(Ok(None), state)).await;
-                return None;
+                None
             }
         },
         Err(err) => {
             let _ = tx.send(MainMessage::CheckLogin(Err(err), state)).await;
-            return None;
+            None
         }
-    };
+    }
 }
 
 pub async fn fetch_versions(api: &Api, tx: &Sender<MainMessage>) -> Option<RunState> {
@@ -119,14 +119,12 @@ pub async fn check_for_updates(
     let version_details = installed_versions
         .iter()
         .map(|(uuid, iv)| {
-            if current_details.len() > 0 {
-                if let Some(details) = current_details.get(uuid) {
-                    if let InstalledVersionState::Updating = details.state {
+            if !current_details.is_empty()
+                && let Some(details) = current_details.get(uuid)
+                    && let InstalledVersionState::Updating = details.state {
                         //if some version is updating, we don't wan't to overwrite its state
-                        return (uuid.clone(), details.clone());
+                        return (*uuid, details.clone());
                     }
-                }
-            }
 
             let arch: Arch = (&iv.version, &iv.platform).into();
             let arch_updates = updates.get(&arch).unwrap();
@@ -196,7 +194,7 @@ pub async fn check_for_updates(
                 InstalledVersionState::UpdateAvailable(update_type)
             };
 
-            (uuid.clone(), InstalledVersionDetails { state })
+            (*uuid, InstalledVersionDetails { state })
         })
         .collect();
 

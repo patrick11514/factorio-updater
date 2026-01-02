@@ -16,7 +16,7 @@ use ratatui::{
 
 use crate::app::utils::ORANGE;
 
-static TICK_STRINGS: &[&'static str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+static TICK_STRINGS: &[&str] = &["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
 static TICK_SLOW: usize = 4;
 
 #[derive(Clone, Debug)]

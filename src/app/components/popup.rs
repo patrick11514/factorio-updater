@@ -182,20 +182,18 @@ impl Popup<'_> {
     pub fn handle_key(&mut self, ev: &KeyEvent) -> Option<PopupResult> {
         match ev.code {
             KeyCode::Enter if self.popup_type == PopupType::Ok && self.is_select() => {
-                if let PopupContent::Select(state, _, _, _) = &self.content {
-                    if let Some(idx) = state.selected() {
+                if let PopupContent::Select(state, _, _, _) = &self.content
+                    && let Some(idx) = state.selected() {
                         return Some(PopupResult::OkSelect(idx));
                     }
-                }
                 None
             }
             KeyCode::Enter if self.popup_type == PopupType::Ok => {
                 if self.is_select() {
-                    if let PopupContent::Select(state, _, _, _) = &self.content {
-                        if let Some(idx) = state.selected() {
+                    if let PopupContent::Select(state, _, _, _) = &self.content
+                        && let Some(idx) = state.selected() {
                             return Some(PopupResult::OkSelect(idx));
                         }
-                    }
                     None
                 } else if self.is_input() {
                     if let PopupContent::Input(input) = &self.content {
@@ -222,11 +220,10 @@ impl Popup<'_> {
             match control {
                 PopupControl::Next => {
                     let current = state.selected();
-                    if let Some(idx) = current {
-                        if idx + 1 >= items.len() {
+                    if let Some(idx) = current
+                        && idx + 1 >= items.len() {
                             return;
                         }
-                    }
 
                     state.select_next();
                     scrollbar_state.next();
@@ -238,14 +235,10 @@ impl Popup<'_> {
                 _ => {}
             }
         }
-        if let PopupContent::Input(input) = &mut self.content {
-            match control {
-                PopupControl::SetError(err) => {
-                    input.set_error(Some(&err));
-                }
-                _ => {}
+        if let PopupContent::Input(input) = &mut self.content
+            && let PopupControl::SetError(err) = control {
+                input.set_error(Some(&err));
             }
-        }
     }
 
     fn is_select(&self) -> bool {
@@ -304,7 +297,7 @@ impl Widget for &mut Popup<'_> {
 
                 let list = style_list(List::new(
                     lines
-                        .into_iter()
+                        .iter_mut()
                         .map(|line| ratatui::widgets::ListItem::new(line.clone()))
                         .collect::<Vec<ratatui::widgets::ListItem>>(),
                 ));

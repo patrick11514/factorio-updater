@@ -40,7 +40,7 @@ pub async fn get_download_link(
     let _ = tx.send(MainMessage::CreateLog(log)).await;
 
     let res = match api
-        .get_stable_download_link((version, platform).into(), &patch)
+        .get_stable_download_link((version, platform).into(), patch)
         .await
     {
         Ok(res) => match res {
@@ -70,7 +70,7 @@ pub async fn get_download_link(
                 .send(MainMessage::OpenPopup(OpenedPopup::ErrorNotify, popup))
                 .await;
             state.lock().unwrap().error();
-            return None;
+            None
         }
     }
 }

@@ -28,11 +28,10 @@ fn next(
     bar_rev: bool,
 ) {
     let current = list.selected();
-    if let Some(idx) = current {
-        if idx + 1 >= len {
+    if let Some(idx) = current
+        && idx + 1 >= len {
             return;
         }
-    }
 
     list.select_next();
     if bar_rev {
@@ -120,8 +119,8 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
         KeyCode::Char('u') | KeyCode::Char('U') if main.opened_popup.is_none() => {
             if let Some(idx) = main.selected_version {
                 let details = main.installed_version_details.get(&idx);
-                if let Some(details) = details {
-                    if let InstalledVersionState::UpdateAvailable(update_type) = &details.state {
+                if let Some(details) = details
+                    && let InstalledVersionState::UpdateAvailable(update_type) = &details.state {
                         let popup = PopupBuilder::default()
                             .title("Update Version")
                             .size(PopupSize::Medium)
@@ -141,7 +140,6 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
 
                         return Some(ScreenEvent::OpenPopup(popup));
                     }
-                }
             }
             None
         }
@@ -174,26 +172,18 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
             None
         }
         KeyCode::Up | KeyCode::Char('w') | KeyCode::Char('k') => {
-            if let Some(popup) = &main.opened_popup {
-                match popup {
-                    OpenedPopup::VersionCreate(_) => {
-                        return Some(ScreenEvent::PopupControl(PopupControl::Previous));
-                    }
-                    _ => {}
+            if let Some(popup) = &main.opened_popup
+                && let OpenedPopup::VersionCreate(_) = popup {
+                    return Some(ScreenEvent::PopupControl(PopupControl::Previous));
                 }
-            }
 
             None
         }
         KeyCode::Down | KeyCode::Char('s') | KeyCode::Char('j') => {
-            if let Some(popup) = &main.opened_popup {
-                match popup {
-                    OpenedPopup::VersionCreate(_) => {
-                        return Some(ScreenEvent::PopupControl(PopupControl::Next));
-                    }
-                    _ => {}
+            if let Some(popup) = &main.opened_popup
+                && let OpenedPopup::VersionCreate(_) = popup {
+                    return Some(ScreenEvent::PopupControl(PopupControl::Next));
                 }
-            }
 
             None
         }
@@ -249,14 +239,14 @@ pub async fn on_key(main: &mut Main, ev: &KeyEvent) -> Option<ScreenEvent> {
                     false,
                 );
 
-                main.selected_version = new_idx.map(|i| version[i].0.clone());
+                main.selected_version = new_idx.map(|i| *version[i].0);
             }
             SelectedList::Logs => {
                 let new_idx = move_list(
                     &mut main.logs_list_state,
                     &mut main.logs_scrollbar_state,
                     main.logs.len(),
-                    step * -1,
+                    -step,
                     true,
                 );
 

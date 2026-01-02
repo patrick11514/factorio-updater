@@ -97,14 +97,14 @@ impl Login {
     async fn submit(&mut self) -> Option<ScreenEvent> {
         let mut errors = false;
 
-        if self.username.value().len() == 0 {
+        if self.username.value().is_empty() {
             self.username.set_error(Some("Please enter username"));
             errors = true;
         } else {
             self.username.set_error(None);
         }
 
-        if self.token.value().len() == 0 {
+        if self.token.value().is_empty() {
             self.token.set_error(Some("Please enter token"));
             errors = true;
         } else {
@@ -131,14 +131,14 @@ impl Login {
                     Some(ScreenEvent::Logged(api))
                 } else {
                     let err = Some("Invalid combination of username/token");
-                    self.username.set_error(err.clone());
+                    self.username.set_error(err);
                     self.token.set_error(err);
                     None
                 }
             }
             Err(_) => {
                 let err = Some("Unable to check username/token validity");
-                self.username.set_error(err.clone());
+                self.username.set_error(err);
                 self.token.set_error(err);
                 None
             }

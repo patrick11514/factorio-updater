@@ -34,11 +34,8 @@ impl App<'_> {
         tokio::spawn(async move {
             let mut stream = EventStream::default();
             while let Some(event) = stream.next().await {
-                match event {
-                    Ok(event) => {
-                        let _ = tx.send(event).await;
-                    }
-                    _ => {}
+                if let Ok(event) = event {
+                    let _ = tx.send(event).await;
                 }
             }
         });
@@ -132,10 +129,7 @@ impl App<'_> {
     }
 
     async fn handle_event(&mut self, event: Event) {
-        match &event {
-            crossterm::event::Event::Key(key_event) => self.handle_key(key_event).await,
-            _ => {}
-        };
+        if let crossterm::event::Event::Key(key_event) = &event { self.handle_key(key_event).await };
     }
 
     async fn handle_key(&mut self, ev: &KeyEvent) {
@@ -168,8 +162,7 @@ impl App<'_> {
 
         let popup_result = self
             .popup
-            .as_mut()
-            .map_or(None, |popup| popup.handle_key(ev));
+            .as_mut().and_then(|popup| popup.handle_key(ev));
 
         let screen_result = match popup_result {
             Some(popup_result) => self.screen.on_popup(popup_result).await,
