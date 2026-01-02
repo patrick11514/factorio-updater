@@ -692,6 +692,7 @@ dependencies = [
  "derive_builder",
  "dirs",
  "figlet-rs",
+ "flate2",
  "futures-util",
  "indicatif",
  "log",

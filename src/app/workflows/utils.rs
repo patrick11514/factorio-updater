@@ -1,3 +1,4 @@
+use flate2::read::GzDecoder;
 use futures_util::StreamExt;
 use tar::Archive;
 use tokio::{io::AsyncWriteExt, sync::mpsc::Sender};
@@ -6,7 +7,7 @@ use zip::read::root_dir_common_filter;
 
 use std::{
     fs::{self, File},
-    io::BufReader,
+    io::{BufReader, Read, Seek, SeekFrom},
     path::{Path, PathBuf},
     sync::atomic::Ordering,
 };
@@ -207,7 +208,7 @@ pub async fn extract(
     let _ = tx.send(MainMessage::CreateLog(log)).await;
 
     let result = tokio::task::spawn_blocking(move || match platform {
-        Platform::Linux32 | Platform::Linux64 => extract_tar_xz(file, path),
+        Platform::Linux32 | Platform::Linux64 => extract_tar(file, path),
         Platform::Win32 | Platform::Win64 => extract_zip(file, path),
         _ => panic!("Unsupported platform for extraction"),
     })
@@ -243,10 +244,28 @@ enum ExtractResult {
     FailedExtract,
 }
 
-fn extract_tar_xz(archive: TempFile, target: PathBuf) -> Result<(), ExtractResult> {
-    let file = File::open(archive.file_path()).map_err(|_| ExtractResult::FailedOpenFile)?;
+fn extract_tar(archive: TempFile, target: PathBuf) -> Result<(), ExtractResult> {
+    let mut file = File::open(archive.file_path()).map_err(|_| ExtractResult::FailedOpenFile)?;
+
+    let mut bytes = [0u8; 6];
+    if file.read_exact(&mut bytes).is_err() {
+        return Err(ExtractResult::FailedRead);
+    }
+
+    file.seek(SeekFrom::Start(0))
+        .map_err(|_| ExtractResult::FailedRead)?;
+
     let buf = BufReader::new(file);
-    let decoder = XzDecoder::new(buf);
+
+    //Thanks gemini :)
+    let decoder: Box<dyn Read> = if bytes[0] == 0x1F && bytes[1] == 0x8B {
+        Box::new(GzDecoder::new(buf))
+    } else if bytes == [0xFD, 0x37, 0x7A, 0x58, 0x5A, 0x00] {
+        Box::new(XzDecoder::new(buf))
+    } else {
+        log::error!("Invalid archive format: {:?}", bytes);
+        return Err(ExtractResult::FailedExtract);
+    };
     let mut archive = Archive::new(decoder);
 
     for file in archive.entries().map_err(|_| ExtractResult::FailedRead)? {
