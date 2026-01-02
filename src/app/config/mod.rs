@@ -52,17 +52,20 @@ impl Config {
         };
 
         let config = config.join(Path::new(FOLDER_NAME)).join("config.json");
+        Self::load_from(&config).await
+    }
 
-        if !match fs::try_exists(&config).await {
+    pub async fn load_from(path: &Path) -> Result<Option<Self>, ConfigError> {
+        if !match fs::try_exists(path).await {
             Ok(exists) => exists,
-            Err(_) => return Err(ConfigError::Read(config)),
+            Err(_) => return Err(ConfigError::Read(path.to_path_buf())),
         } {
             return Ok(None);
         }
 
-        let data = match fs::read_to_string(&config).await {
+        let data = match fs::read_to_string(path).await {
             Ok(data) => data,
-            Err(_) => return Err(ConfigError::Read(config)),
+            Err(_) => return Err(ConfigError::Read(path.to_path_buf())),
         };
 
         let config: Config = match serde_json::from_str(&data) {
@@ -86,14 +89,17 @@ impl Config {
         }
 
         let config_path = config_dir.join("config.json");
+        Self::save_to(self, &config_path).await
+    }
 
+    pub async fn save_to(&self, path: &Path) -> Result<(), ConfigError> {
         let data = match serde_json::to_string_pretty(self) {
             Ok(data) => data,
             Err(err) => return Err(ConfigError::Parse(err)),
         };
 
-        if let Err(_) = fs::write(&config_path, data).await {
-            return Err(ConfigError::Write(config_path));
+        if let Err(_) = fs::write(path, data).await {
+            return Err(ConfigError::Write(path.to_path_buf()));
         }
 
         Ok(())
@@ -134,5 +140,60 @@ mod tests {
         config.installed_versions.insert(uuid, installed_version);
 
         assert_json_snapshot!(config);
+    }
+
+    #[tokio::test]
+    async fn test_save_and_load() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_path = temp_dir.path().join("config.json");
+
+        let mut config = Config::new("user".to_string(), "token".to_string());
+        let uuid = Uuid::new_v4();
+        let installed_version = InstalledVersion {
+            version: Version::Vanilla,
+            platform: Platform::Linux64,
+            current_version: "1.1.100".to_string(),
+            path: PathBuf::from("/opt/factorio"),
+            installed_at: Utc::now(),
+        };
+        config.installed_versions.insert(uuid, installed_version);
+
+        // Save
+        config.save_to(&config_path).await.unwrap();
+
+        // Load
+        let loaded_config = Config::load_from(&config_path).await.unwrap().unwrap();
+
+        assert_eq!(config.username, loaded_config.username);
+        assert_eq!(config.token, loaded_config.token);
+        assert_eq!(
+            config.installed_versions.len(),
+            loaded_config.installed_versions.len()
+        );
+
+        let loaded_version = loaded_config.installed_versions.get(&uuid).unwrap();
+        assert_eq!(loaded_version.current_version, "1.1.100");
+    }
+
+    #[tokio::test]
+    async fn test_load_non_existent() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_path = temp_dir.path().join("non_existent_config.json");
+
+        let result = Config::load_from(&config_path).await.unwrap();
+        assert!(result.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_load_corrupted() {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let config_path = temp_dir.path().join("corrupted_config.json");
+
+        tokio::fs::write(&config_path, "{ \"username\": ")
+            .await
+            .unwrap();
+
+        let result = Config::load_from(&config_path).await;
+        assert!(matches!(result, Err(ConfigError::Parse(_))));
     }
 }

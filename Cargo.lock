@@ -716,6 +716,7 @@ dependencies = [
  "serde_json",
  "simple-logging",
  "tar",
+ "tempfile",
  "tokio",
  "tui-input",
  "uuid",
