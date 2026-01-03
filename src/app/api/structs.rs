@@ -232,10 +232,6 @@ mod tests {
 
         updates.insert(Arch::CoreLinux64, linux_items);
 
-        // Convert to serde_json::Value first to handle map keys correctly if needed
-        // or just verify if serde_json handles it.
-        // The previous error "cannot serialize maps without string keys to JSON" suggests serde_json failed or insta failed.
-        // Let's try converting to Value explicitly.
         let json = serde_json::to_value(&updates).unwrap();
         assert_json_snapshot!(json);
     }
@@ -266,7 +262,7 @@ mod tests {
     fn test_get_versions_win32() {
         let versions = get_versions_by_platform(&Platform::Win32);
         assert!(versions.iter().any(|v| matches!(v, Version::Vanilla)));
-        // Win32 likely doesn't support SpaceAge or Headless in this mapping
+        // Win32 doesn't support SpaceAge or Headless
         assert!(!versions.iter().any(|v| matches!(v, Version::SpaceAge)));
         assert!(!versions.iter().any(|v| matches!(v, Version::Headless)));
     }
@@ -291,7 +287,7 @@ mod tests {
 
     #[test]
     fn test_arch_conversion_invalid() {
-        // Example: Headless on Win32 might be invalid/Other
+        // Example: Headless on Win32 is Other
         let arch = Arch::from((&Version::Headless, &Platform::Win32));
         assert_eq!(arch, Arch::Other);
     }

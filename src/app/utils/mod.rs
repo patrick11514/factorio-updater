@@ -91,6 +91,7 @@ mod tests {
     fn test_get_sorted_updates_missing_arch() {
         let updates_map = HashMap::new();
         // Should panic because unwrap() is used on the map get
+        // And no updates are presented in HashMap
         get_sorted_updates(&updates_map, &Version::Vanilla, &Platform::Linux64);
     }
 }
